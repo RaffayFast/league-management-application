@@ -5,9 +5,10 @@ class AppConfig {
   static const appName = 'LeagueHub';
   static const appVersion = '1.0.0';
 
-  /// Android emulator alias for the host machine (docker-compose maps host 8080).
-/// Physical device on Member 1's hotspot (or editable via app Settings).
-static const defaultBaseUrl = 'http://192.168.56.253:8080';
+  /// Physical device on Member 1's hotspot IP (192.168.56.253:8080).
+  /// Note: Change to 'http://localhost:8080' if testing backend on the SAME machine.
+  static const defaultBaseUrl = 'http://192.168.56.253:8080';
+
   static const connectTimeout = Duration(seconds: 8);
   static const receiveTimeout = Duration(seconds: 15);
 
@@ -17,8 +18,11 @@ static const defaultBaseUrl = 'http://192.168.56.253:8080';
 
   /// api_contract.md A12: 1-100 actions per sync request.
   static const maxSyncBatch = 100;
+
+  /// Disabled recaps for performance/contract requirements.
+  static const bool enableRecaps = false;
 }
-static const bool enableRecaps = false;
+
 /// Demo accounts seeded by POST /audit/v1/reset (api_contract.md A2).
 class DemoAccount {
   const DemoAccount(this.label, this.email);

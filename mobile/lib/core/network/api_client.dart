@@ -109,6 +109,7 @@ class ApiClient {
       case DioExceptionType.connectionError:
       case DioExceptionType.badCertificate:
       case DioExceptionType.unknown:
+      default:
         if (e.error is FormatException) return ApiException.malformed('Response was not valid JSON');
         return ApiException.network();
     }
