@@ -1,0 +1,21 @@
+{% extends "_base.html" %}
+{% block main %}
+{% include "_match_header.html" %}
+<div class="watch-layout">
+  <div class="watch-main">
+    <section class="card info-card" aria-labelledby="kickoff-title">
+      <h2 id="kickoff-title">Kick-off</h2>
+      {% if snapshot.scheduled_at %}
+      <p class="kickoff-time"><time datetime="{{ snapshot.scheduled_at }}" data-local-time>{{ snapshot.scheduled_at }}</time></p>
+      {% else %}
+      <p class="kickoff-time">Time to be confirmed</p>
+      {% endif %}
+      <p class="muted">The live video starts here at kick-off. Keep this page open and the score updates on its own.</p>
+    </section>
+  </div>
+  <aside class="watch-side">
+    {% include "_merch_cart.html" %}
+  </aside>
+</div>
+{% include "_auth_modal.html" %}
+{% endblock %}

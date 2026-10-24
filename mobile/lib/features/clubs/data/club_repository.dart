@@ -8,13 +8,15 @@ class ClubRepository {
   ClubRepository(this._fetcher);
   final CachedFetcher _fetcher;
 
-  Future<Cached<Club>> club(String clubId) =>
-      _fetcher.fetch('/api/v1/clubs/${Uri.encodeComponent(clubId)}', Club.fromJson);
+  Future<Cached<Club>> club(String clubId) => _fetcher.fetch(
+      '/api/v1/clubs/${Uri.encodeComponent(clubId)}', Club.fromJson);
 }
 
-final clubRepositoryProvider = Provider((ref) => ClubRepository(ref.watch(cachedFetcherProvider)));
+final clubRepositoryProvider =
+    Provider((ref) => ClubRepository(ref.watch(cachedFetcherProvider)));
 
-final clubProvider = FutureProvider.autoDispose.family<Cached<Club>, String>((ref, clubId) {
+final clubProvider =
+    FutureProvider.autoDispose.family<Cached<Club>, String>((ref, clubId) {
   ref.watch(refreshTickProvider);
   return ref.watch(clubRepositoryProvider).club(clubId);
 });

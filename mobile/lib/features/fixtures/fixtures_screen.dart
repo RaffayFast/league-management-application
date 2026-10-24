@@ -40,7 +40,8 @@ class _FixturesScreenState extends ConsumerState<FixturesScreen> {
     if (widget.scoringMode && !oldWidget.scoringMode) {
       setState(() {
         _status = _StatusFilter.live;
-        _leagueId = ref.read(authControllerProvider).user?.leagueId ?? _leagueId;
+        _leagueId =
+            ref.read(authControllerProvider).user?.leagueId ?? _leagueId;
       });
     }
   }
@@ -51,12 +52,18 @@ class _FixturesScreenState extends ConsumerState<FixturesScreen> {
       _StatusFilter.live => f.status == MatchStatus.inProgress,
       _StatusFilter.upcoming => f.status == MatchStatus.upcoming,
       _StatusFilter.completed => f.status == MatchStatus.completed,
-      _StatusFilter.other => !{MatchStatus.inProgress, MatchStatus.upcoming, MatchStatus.completed}.contains(f.status),
+      _StatusFilter.other => !{
+          MatchStatus.inProgress,
+          MatchStatus.upcoming,
+          MatchStatus.completed
+        }.contains(f.status),
     };
     if (!statusOk) return false;
     if (_query.isEmpty) return true;
     final q = _query.toLowerCase();
-    return f.homeLabel.toLowerCase().contains(q) || f.awayLabel.toLowerCase().contains(q) || f.matchId.toLowerCase().contains(q);
+    return f.homeLabel.toLowerCase().contains(q) ||
+        f.awayLabel.toLowerCase().contains(q) ||
+        f.matchId.toLowerCase().contains(q);
   }
 
   @override
@@ -71,20 +78,26 @@ class _FixturesScreenState extends ConsumerState<FixturesScreen> {
         onRetry: () => ref.invalidate(leaguesProvider),
         data: (leagues) {
           if (leagues.data.isEmpty) {
-            return const EmptyView(title: 'No leagues yet', message: 'Leagues you can access will appear here.', icon: Icons.emoji_events_outlined);
+            return const EmptyView(
+                title: 'No leagues yet',
+                message: 'Leagues you can access will appear here.',
+                icon: Icons.emoji_events_outlined);
           }
           final ids = leagues.data.map((l) => l.leagueId).toSet();
           final preferred = widget.scoringMode ? user?.leagueId : null;
           final leagueId = (_leagueId != null && ids.contains(_leagueId))
               ? _leagueId!
-              : (preferred != null && ids.contains(preferred) ? preferred : leagues.data.first.leagueId);
+              : (preferred != null && ids.contains(preferred)
+                  ? preferred
+                  : leagues.data.first.leagueId);
           final league = leagues.data.firstWhere((l) => l.leagueId == leagueId);
 
           return Column(
             children: [
               if (leagues.fromCache) CachedBanner(cachedAt: leagues.cachedAt),
               Padding(
-                padding: const EdgeInsets.fromLTRB(AppSpacing.lg, AppSpacing.lg, AppSpacing.lg, 0),
+                padding: const EdgeInsets.fromLTRB(
+                    AppSpacing.lg, AppSpacing.lg, AppSpacing.lg, 0),
                 child: Column(
                   children: [
                     LeaguePicker(
@@ -94,7 +107,9 @@ class _FixturesScreenState extends ConsumerState<FixturesScreen> {
                       onSportChanged: (s) => setState(() {
                         _sport = s;
                         if (s != null && league.sportId != s) {
-                          _leagueId = leagues.data.firstWhere((l) => l.sportId == s).leagueId;
+                          _leagueId = leagues.data
+                              .firstWhere((l) => l.sportId == s)
+                              .leagueId;
                         }
                       }),
                       onLeagueChanged: (id) => setState(() => _leagueId = id),
@@ -175,9 +190,18 @@ class _FixtureList extends ConsumerWidget {
                 const SizedBox(height: AppSpacing.md),
               ],
               if (res.data.fixtures.isEmpty)
-                const SizedBox(height: 320, child: EmptyView(title: 'No matches yet', message: 'This league has no fixtures scheduled.', icon: Icons.event_busy))
+                const SizedBox(
+                    height: 320,
+                    child: EmptyView(
+                        title: 'No matches yet',
+                        message: 'This league has no fixtures scheduled.',
+                        icon: Icons.event_busy))
               else if (items.isEmpty)
-                const SizedBox(height: 320, child: EmptyView(title: 'No matches match your filters', icon: Icons.filter_alt_off))
+                const SizedBox(
+                    height: 320,
+                    child: EmptyView(
+                        title: 'No matches match your filters',
+                        icon: Icons.filter_alt_off))
               else
                 for (final f in items) ...[
                   FixtureCard(fixture: f),

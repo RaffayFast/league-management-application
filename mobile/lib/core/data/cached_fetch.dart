@@ -14,7 +14,8 @@ class Cached<T> {
 /// Network-first reads with SQLite fallback. Live responses are cached raw and
 /// re-parsed with the same model code when offline.
 class CachedFetcher {
-  CachedFetcher({required this.api, required this.cache, required this.isOffline});
+  CachedFetcher(
+      {required this.api, required this.cache, required this.isOffline});
 
   final ApiClient api;
   final CacheStore cache;
@@ -31,7 +32,10 @@ class CachedFetcher {
     // Known offline: skip the connect timeout and go straight to the cache.
     if (isOffline()) {
       final hit = await cache.get(key);
-      if (hit != null) return Cached(parseOrThrow(hit.json, parse, path), fromCache: true, cachedAt: hit.updatedAt);
+      if (hit != null) {
+        return Cached(parseOrThrow(hit.json, parse, path),
+            fromCache: true, cachedAt: hit.updatedAt);
+      }
       throw ApiException.network('Offline and nothing cached yet');
     }
 
@@ -44,7 +48,8 @@ class CachedFetcher {
       if (!e.isConnectivity) rethrow;
       final hit = await cache.get(key);
       if (hit == null) rethrow;
-      return Cached(parseOrThrow(hit.json, parse, path), fromCache: true, cachedAt: hit.updatedAt);
+      return Cached(parseOrThrow(hit.json, parse, path),
+          fromCache: true, cachedAt: hit.updatedAt);
     }
   }
 }

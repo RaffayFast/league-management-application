@@ -30,8 +30,9 @@ class StoreRepository {
   final ApiClient _api;
   final LocalDb _db;
 
-  Future<Cached<List<Product>>> products() =>
-      _fetcher.fetch('/api/v1/store/products', (j) => mapList(j['products'], Product.fromJson));
+  Future<Cached<List<Product>>> products() => _fetcher.fetch(
+      '/api/v1/store/products',
+      (j) => mapList(j['products'], Product.fromJson));
 
   Future<OrderResponse> checkout({
     required String orderId,
@@ -62,21 +63,27 @@ class StoreRepository {
   }
 
   Future<List<StoredReceipt>> receipts(String owner) async {
-    final rows = await _db.db.query('receipts', where: 'owner = ?', whereArgs: [owner], orderBy: 'created_at DESC');
+    final rows = await _db.db.query('receipts',
+        where: 'owner = ?', whereArgs: [owner], orderBy: 'created_at DESC');
     return rows
-        .map((r) => StoredReceipt(OrderResponse.fromJson(asMap(jsonDecode(r['json'] as String))), r['created_at'] as String))
+        .map((r) => StoredReceipt(
+            OrderResponse.fromJson(asMap(jsonDecode(r['json'] as String))),
+            r['created_at'] as String))
         .toList();
   }
 
   Future<OrderResponse?> receipt(String orderId) async {
-    final rows = await _db.db.query('receipts', where: 'order_id = ?', whereArgs: [orderId], limit: 1);
+    final rows = await _db.db.query('receipts',
+        where: 'order_id = ?', whereArgs: [orderId], limit: 1);
     if (rows.isEmpty) return null;
-    return OrderResponse.fromJson(asMap(jsonDecode(rows.first['json'] as String)));
+    return OrderResponse.fromJson(
+        asMap(jsonDecode(rows.first['json'] as String)));
   }
 
   /// Decodes the server's receipt.pdf_base64 into the app documents folder.
   Future<File> savePdf(OrderResponse order) async {
-    final dir = Directory(p.join((await getApplicationDocumentsDirectory()).path, 'receipts'));
+    final dir = Directory(
+        p.join((await getApplicationDocumentsDirectory()).path, 'receipts'));
     if (!await dir.exists()) await dir.create(recursive: true);
     final file = File(p.join(dir.path, '${order.orderId}.pdf'));
     await file.writeAsBytes(base64Decode(order.receipt.pdfBase64), flush: true);
@@ -90,7 +97,8 @@ final storeRepositoryProvider = Provider((ref) => StoreRepository(
       ref.watch(localDbProvider),
     ));
 
-final productsProvider = FutureProvider.autoDispose<Cached<List<Product>>>((ref) {
+final productsProvider =
+    FutureProvider.autoDispose<Cached<List<Product>>>((ref) {
   ref.watch(refreshTickProvider);
   return ref.watch(storeRepositoryProvider).products();
 });

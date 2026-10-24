@@ -5,9 +5,9 @@ class AppConfig {
   static const appName = 'LeagueHub';
   static const appVersion = '1.0.0';
 
-  /// Physical device on Member 1's hotspot IP (192.168.56.253:8080).
-  /// Note: Change to 'http://localhost:8080' if testing backend on the SAME machine.
-  static const defaultBaseUrl = 'http://192.168.56.253:8080';
+  /// Backend on the same machine. For a phone on the hotspot use the laptop's IP,
+  /// e.g. 'http://192.168.56.253:8080' (keep the '//' after 'http:'). Editable in Settings.
+  static const String defaultBaseUrl = 'http://192.168.18.40:8080';
 
   static const connectTimeout = Duration(seconds: 8);
   static const receiveTimeout = Duration(seconds: 15);

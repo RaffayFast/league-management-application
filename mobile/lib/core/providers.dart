@@ -13,17 +13,22 @@ import 'sync/sync_controller.dart';
 import 'sync/sync_service.dart';
 
 /// Opened in main() and injected with an override.
-final localDbProvider = Provider<LocalDb>((ref) => throw UnimplementedError('localDbProvider must be overridden'));
+final localDbProvider = Provider<LocalDb>(
+    (ref) => throw UnimplementedError('localDbProvider must be overridden'));
 
 /// Current server URL; initial value loaded from SQLite in main().
-final baseUrlProvider = StateProvider<String>((ref) => throw UnimplementedError('baseUrlProvider must be overridden'));
+final baseUrlProvider = StateProvider<String>(
+    (ref) => throw UnimplementedError('baseUrlProvider must be overridden'));
 
 /// Bumped after sync or mutations so data providers refetch.
 final refreshTickProvider = StateProvider<int>((ref) => 0);
 
-final settingsStoreProvider = Provider((ref) => SettingsStore(ref.watch(localDbProvider)));
-final cacheStoreProvider = Provider((ref) => CacheStore(ref.watch(localDbProvider)));
-final actionQueueProvider = Provider((ref) => ActionQueue(ref.watch(localDbProvider)));
+final settingsStoreProvider =
+    Provider((ref) => SettingsStore(ref.watch(localDbProvider)));
+final cacheStoreProvider =
+    Provider((ref) => CacheStore(ref.watch(localDbProvider)));
+final actionQueueProvider =
+    Provider((ref) => ActionQueue(ref.watch(localDbProvider)));
 final secureStoreProvider = Provider((ref) => SecureStore());
 final connectivityServiceProvider = Provider((ref) => ConnectivityService());
 
@@ -39,8 +44,10 @@ final apiClientProvider = Provider<ApiClient>((ref) {
   return ApiClient(
     baseUrl: ref.watch(baseUrlProvider),
     tokenProvider: () => holder.token,
-    onUnauthorized: () => ref.read(authControllerProvider.notifier).sessionExpired(),
-    onReachability: (ok) => ref.read(syncControllerProvider.notifier).setServerReachable(ok),
+    onUnauthorized: () =>
+        ref.read(authControllerProvider.notifier).sessionExpired(),
+    onReachability: (ok) =>
+        ref.read(syncControllerProvider.notifier).setServerReachable(ok),
   );
 });
 

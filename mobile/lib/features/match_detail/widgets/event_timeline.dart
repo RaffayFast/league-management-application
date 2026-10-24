@@ -36,7 +36,8 @@ class EventTimeline extends StatelessWidget {
       case 'tiebreak_winner':
         return 'Tiebreak won by $team';
       case 'compensation':
-        final target = score.events.where((x) => x.eventId == e.compensates).firstOrNull;
+        final target =
+            score.events.where((x) => x.eventId == e.compensates).firstOrNull;
         final reason = e.payload['reason'];
         return 'Correction of #${target?.sequence ?? e.compensates}${reason is String && reason.isNotEmpty ? ' — $reason' : ''}';
       default:
@@ -60,7 +61,8 @@ class EventTimeline extends StatelessWidget {
     if (score.events.isEmpty && pending.isEmpty) {
       return const Padding(
         padding: EdgeInsets.symmetric(vertical: AppSpacing.md),
-        child: Text('No events yet.', style: TextStyle(color: AppColors.textMuted)),
+        child: Text('No events yet.',
+            style: TextStyle(color: AppColors.textMuted)),
       );
     }
     final theme = Theme.of(context);
@@ -70,8 +72,11 @@ class EventTimeline extends StatelessWidget {
           ListTile(
             contentPadding: EdgeInsets.zero,
             leading: CircleAvatar(
-              backgroundColor: e.compensated ? const Color(0xFFEDEFF3) : AppColors.navy,
-              child: Icon(_icon(e.type), color: e.compensated ? AppColors.textMuted : AppColors.lime, size: 20),
+              backgroundColor:
+                  e.compensated ? const Color(0xFFEDEFF3) : AppColors.navy,
+              child: Icon(_icon(e.type),
+                  color: e.compensated ? AppColors.textMuted : AppColors.lime,
+                  size: 20),
             ),
             title: Text(
               _title(e),
@@ -86,11 +91,16 @@ class EventTimeline extends StatelessWidget {
               children: [
                 Text('#${e.sequence}'),
                 if (e.compensated)
-                  const LabelBadge(icon: Icons.undo, text: 'Corrected', color: AppColors.warning),
+                  const LabelBadge(
+                      icon: Icons.undo,
+                      text: 'Corrected',
+                      color: AppColors.warning),
               ],
             ),
             trailing: onCorrect != null && e.isCompensatable
-                ? TextButton(onPressed: () => onCorrect!(e), child: const Text('Correct'))
+                ? TextButton(
+                    onPressed: () => onCorrect!(e),
+                    child: const Text('Correct'))
                 : null,
           ),
         for (final a in pending)
@@ -98,8 +108,12 @@ class EventTimeline extends StatelessWidget {
             contentPadding: EdgeInsets.zero,
             leading: CircleAvatar(
               backgroundColor: const Color(0xFFFFF1D6),
-              child: Icon(a.state == PendingState.rejected ? Icons.error_outline : Icons.schedule,
-                  color: AppColors.warning, size: 20),
+              child: Icon(
+                  a.state == PendingState.rejected
+                      ? Icons.error_outline
+                      : Icons.schedule,
+                  color: AppColors.warning,
+                  size: 20),
             ),
             title: Text(a.label),
             subtitle: Text(a.state == PendingState.rejected

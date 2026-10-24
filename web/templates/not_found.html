@@ -1,0 +1,8 @@
+{% extends "_base.html" %}
+{% block main %}
+<section class="card notice-card" aria-labelledby="nf-title">
+  <h1 id="nf-title">We couldn't find that {{ what }}</h1>
+  <p class="notice-text">Nothing is listed under “{{ ident }}”. The link may be old or mistyped.</p>
+  <p><a class="btn btn-navy" href="/web/">See live and upcoming matches</a></p>
+</section>
+{% endblock %}

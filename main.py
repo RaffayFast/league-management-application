@@ -9,12 +9,13 @@ import hashlib
 import hmac
 import json
 import os
-import random
 import re
+import sys
 import threading
 import time
 from collections import deque
 from datetime import datetime, timezone
+from pathlib import Path
 from typing import Optional
 
 from fastapi import FastAPI, Header, Request
@@ -22,6 +23,27 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from starlette.exceptions import HTTPException as StarletteHTTPException
+
+from fastapi.staticfiles import StaticFiles
+
+from middleware.guest_boundary import GuestBoundaryMiddleware, simulate_guest_write
+from routers import costream as costream_routes, guest_cart as guest_cart_routes, guest_web as guest_web_routes
+from routers import live as live_routes, media as media_routes, metrics as metrics_routes
+from routers import moderation as moderation_routes, privacy as privacy_routes, qr as qr_routes, stream as stream_routes
+from services.chat import ChatService
+from services.costream_service import CostreamService
+from services.guest_cart import GuestCartService
+from services.guest_session import GuestSessionService
+from services.live_feed import LiveFeed
+from services.media_access import MediaAccessPolicy
+from services.media_server import MediaServerClient
+from services.metrics_service import MetricsService
+from services.moderation_service import ModerationRegistry, ModerationService
+from services.notification_dlq import DeadLetterStore, NotificationDispatcher, RetryPolicy
+from services.privacy_service import PrivacyService
+from services.qr_resolver import target_route
+from services.stream_key_service import MediaUrls, StreamKeyService, StreamKeyStore
+from sports_engine import SCORING_STRATEGIES, strategy_for
 
 app = FastAPI(title="NaSCon '26 Multi-Sport Platform Backend")
 
@@ -32,9 +54,25 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Secrets come from the environment only (rules.md §2)
+# Secrets come from the environment only (rules.md §2, Day 2 spec 7.3)
 DAY1_SALT = os.getenv("DAY1_SALT", "demo-salt")
+DAY2_SALT = os.getenv("DAY2_SALT", "demo-salt")
 JWT_SECRET = os.getenv("JWT_SECRET", "dev-jwt-secret")
+# Base of public links such as QR short URLs; the Day 2 contract expects http://localhost:8080
+PUBLIC_BASE_URL = os.getenv("PUBLIC_BASE_URL", "http://localhost:8080").rstrip("/")
+# Guest Web Player media; the player shows an offline state when nothing is published at these URLs
+MEDIA_HLS_BASE_URL = os.getenv("MEDIA_HLS_BASE_URL", "http://localhost:8888").rstrip("/")
+MATCH_PLAYBACK_URL_TEMPLATE = os.getenv("MATCH_PLAYBACK_URL_TEMPLATE", "{hls_base}/live/{match_id}/index.m3u8")
+WEB_DIR = Path(__file__).resolve().parent / "web"
+# Media server (Group 3). Internal Control API URL (empty = media integration off, e.g. unit tests) and the
+# external host name used in contract URLs (rtmp://localhost:1935/..., http://localhost:8888/...).
+MEDIAMTX_API_URL = os.getenv("MEDIAMTX_API_URL", "")
+MEDIA_PUBLIC_HOST = os.getenv("MEDIA_PUBLIC_HOST", "localhost")
+MEDIA_HOOK_TOKEN = os.getenv("MEDIA_HOOK_TOKEN", "dev-media-hook-token")
+MEDIA_INTERNAL_USER = os.getenv("MEDIA_INTERNAL_USER", "compositor")
+MEDIA_INTERNAL_PASS = os.getenv("MEDIA_INTERNAL_PASS", "dev-compositor-pass")
+HEALTH_CHECK_MEDIA = os.getenv("HEALTH_CHECK_MEDIA", "false").lower() in ("1", "true", "yes")
+DLQ_PATH = os.getenv("DLQ_PATH", str(Path(__file__).resolve().parent / "data" / "nascon_dlq.sqlite3"))
 
 # Appendix A vector 1 (salt demo-salt, id evt-1) only verifies with "|"
 SIGNATURE_SEPARATOR = "|"
@@ -45,12 +83,8 @@ EVENT_KEY_RE = re.compile(r"[a-z0-9_]{1,40}")
 DATE_FMT = "%Y-%m-%d"
 TS_FMT = "%Y-%m-%dT%H:%M:%SZ"
 
-SCORING_MODELS = ("event", "innings", "round")
-PERIOD_FIELDS = {
-    "event": ("count", "duration_minutes"),
-    "innings": ("innings_per_team", "overs_per_innings", "balls_per_over", "wickets_per_innings"),
-    "round": ("best_of",),
-}
+# The scoring model is the only code-level difference between sports (sports_engine.py)
+SCORING_MODELS = tuple(SCORING_STRATEGIES)
 OVERTIME_POLICIES = ("none", "extra_time", "shootout", "golden_score", "super_over")
 TIE_BREAKERS = ("h2h_points", "h2h_diff", "overall_diff", "scored", "fair_play", "draw_lots")
 DEFAULT_TIE_BREAK_ORDER = list(TIE_BREAKERS)
@@ -70,6 +104,7 @@ DEMO_PASSWORD = "Nascon@26"
 LOCK = threading.RLock()
 DB: dict = {}
 RATE_BUCKETS: dict = {}
+SEEDING = {"active": False}  # while reset rebuilds state, live pushes are held back (no half-built snapshots)
 
 
 # ==========================================
@@ -181,6 +216,11 @@ def sign(salt: str, record_id: str, payload: dict) -> str:
     return hmac.new(salt.encode("utf-8"), msg, hashlib.sha256).hexdigest()
 
 
+def sign_day2(entity_id: str, sig_payload: dict) -> str:
+    """Day 2 spec 5.3: HMAC-SHA256(DAY2_SALT, entity_id + "|" + canonical(sig_payload)), lowercase hex."""
+    return sign(DAY2_SALT, entity_id, sig_payload)
+
+
 def fingerprint(body) -> str:
     return hashlib.sha256(canonical_json(body).encode("utf-8")).hexdigest()
 
@@ -188,26 +228,41 @@ def fingerprint(body) -> str:
 # ==========================================
 # MIDDLEWARE: BODY LIMIT & RATE LIMIT
 # ==========================================
-@app.middleware("http")
-async def body_limit_and_rate_limit(request: Request, call_next):
-    length = request.headers.get("content-length")
-    if length and length.isdigit() and int(length) > MAX_BODY_BYTES:
-        return error_response(413, "PAYLOAD_TOO_LARGE", "Request body exceeds 1 MB", {"max_bytes": MAX_BODY_BYTES})
+class BodyLimitAndRateLimit:
+    """413 above 1 MB on any route; 100 requests / 10 s per client IP on /api/v1/* only.
 
-    # Only /api/v1/* is limited; /audit/v1/* and /health are exempt
-    if request.url.path.startswith("/api/v1/"):
-        key = request.client.host if request.client else "anonymous"
-        now = time.monotonic()
-        with LOCK:
-            window = RATE_BUCKETS.setdefault(key, deque())
-            while window and now - window[0] >= RATE_LIMIT_WINDOW_SECONDS:
-                window.popleft()
-            if len(window) >= RATE_LIMIT_REQUESTS:
-                retry_after = max(1, int(RATE_LIMIT_WINDOW_SECONDS - (now - window[0])) + 1)
-                return error_response(429, "RATE_LIMITED", "Too many requests",
-                                      {"retry_after_seconds": retry_after}, {"Retry-After": str(retry_after)})
-            window.append(now)
-    return await call_next(request)
+    Pure ASGI (not BaseHTTPMiddleware): same behaviour, far less per-request overhead under load (NFR-2)."""
+
+    def __init__(self, app):
+        self.app = app
+
+    async def __call__(self, scope, receive, send):
+        if scope["type"] != "http":
+            return await self.app(scope, receive, send)
+        length = dict(scope.get("headers") or []).get(b"content-length")
+        if length and length.isdigit() and int(length) > MAX_BODY_BYTES:
+            response = error_response(413, "PAYLOAD_TOO_LARGE", "Request body exceeds 1 MB", {"max_bytes": MAX_BODY_BYTES})
+            return await response(scope, receive, send)
+
+        # Only /api/v1/* is limited; /audit/v1/* and /health are exempt
+        if scope["path"].startswith("/api/v1/"):
+            client = scope.get("client")
+            key = client[0] if client else "anonymous"
+            now = time.monotonic()
+            with LOCK:
+                window = RATE_BUCKETS.setdefault(key, deque())
+                while window and now - window[0] >= RATE_LIMIT_WINDOW_SECONDS:
+                    window.popleft()
+                if len(window) >= RATE_LIMIT_REQUESTS:
+                    retry_after = max(1, int(RATE_LIMIT_WINDOW_SECONDS - (now - window[0])) + 1)
+                    response = error_response(429, "RATE_LIMITED", "Too many requests",
+                                              {"retry_after_seconds": retry_after}, {"Retry-After": str(retry_after)})
+                    return await response(scope, receive, send)
+                window.append(now)
+        await self.app(scope, receive, send)
+
+
+app.add_middleware(BodyLimitAndRateLimit)
 
 
 # ==========================================
@@ -354,14 +409,16 @@ def _seed_demo():
                ("demo-pa-13", "Nabeel", "mid", "substitute")]
     alpha_2 = [("demo-pb-01", "Omar", "gk", "captain"), ("player-alpha-2", "Rehan", "mid", "starter"),
                ("demo-pb-03", "Saad", "def", "starter"), ("demo-pb-04", "Taimoor", "fwd", "starter")]
-    beta_1 = [("demo-pc-01", "Umer", "gk", "captain"), ("player-beta-1", "Waqas", "fwd", "starter")]
+    beta_1 = [("demo-pc-01", "Umer", "gk", "captain"), ("player-beta-1", "Waqas", "fwd", "starter"),
+              ("player-beta-2", "Yasir", "def", "starter")]
     _roster_setup(_demo_roster_body("league-alpha-1", "tenant-alpha", [
         ("sq-alpha-1", "club-alpha-1", "Alpha FC", alpha_1), ("sq-alpha-2", "club-alpha-2", "Beta United", alpha_2)]))
     _roster_setup(_demo_roster_body("league-beta-1", "tenant-beta", [
         ("sq-beta-1", "club-beta-1", "Beta City FC", beta_1)]))
 
     # Demo matches are built through the real event engine; the scoring event key is read from config
-    score_type = next(iter(DB["sports"]["football"]["scoring_events"]))
+    football = DB["sports"]["football"]
+    score_type = strategy_for(football).unit_event(football)
     init = {"sport_id": "football", "home_team_id": home, "away_team_id": away, "league_id": "league-alpha-1"}
     scripts = {
         "demo-m1": [("match_init", init), ("match_start", {}),
@@ -401,6 +458,20 @@ def _seed_state(seed=42, stock: Optional[dict] = None):
         "transfers": {},         # request_id -> {"fingerprint", "response"}
         "audit_seq": 0,
         "sync_actions": {},      # action_id -> {"fingerprint", "result"}
+        # Phase II (Day 2 spec 5.2), filled by _seed_phase2
+        "qr_codes": {},          # entity_id -> {"entity_id", "entity_type", "short_code", "short_url", "scan_count"}
+        "guest_tokens": {},      # guest_token -> {"guest_token", "role", "read_only", "merged", "merged_into"}
+        "carts": {},             # registered user id -> {"user_id", "currency", "items"}
+        "pinned_variants": {},   # match_id -> variant shown on the Guest Web Player merch card
+        "chat_rooms": {},        # chat_room_id -> {"seq", "messages"} (Group 2 transport, Group 3 moderation)
+        # Phase II Group 3
+        "stream_keys": {},       # stream_key -> {"stream_key", "player_id", "label", "status", ...}
+        "stream_key_by_player": {},  # player_id -> current (or last revoked) stream_key
+        "costream_sessions": {},     # session_id -> stored session state and response
+        "moderation_rooms": {},      # chat_room_id -> {"kicked", "muted", "recent", "decisions"}
+        "media_presence": {},        # MediaMTX path -> {"since"} while a publisher is ready
+        "media_event_log": [],       # last runOnReady / runOnNotReady events (bounded)
+        "erased_subjects": set(),    # user ids whose JWTs are refused after privacy erasure
     })
     for product in PRODUCT_SEED:
         DB["products"][product["product_id"]] = {k: v for k, v in product.items() if k != "variants"}
@@ -416,7 +487,53 @@ def _seed_state(seed=42, stock: Optional[dict] = None):
                                    "color": None, "price_minor": 450000, "stock": qty, "reserved": 0}
             DB["products"]["prod-jersey-001"]["variant_ids"].append(vid)
     RATE_BUCKETS.clear()
-    _seed_demo()
+    SEEDING["active"] = True
+    try:
+        _seed_demo()
+        _seed_phase2()
+    finally:
+        SEEDING["active"] = False
+
+
+# ==========================================
+# PHASE II BASELINE SEED (Day 2 spec 5.2) - data only
+# ==========================================
+PHASE2_MATCH = {"match_id": "match-m1", "league_id": "league-alpha-1", "sport_id": "football",
+                "home_team_id": "club-alpha-1", "away_team_id": "club-alpha-2",
+                "scheduled_at": "2026-10-18T09:00:00Z", "pinned_product_id": "prod-jersey-001",
+                "pinned_variant_id": "var-jersey-001-L"}
+PHASE2_QR_SEED = (("match-m1", "match", "m1-live"),
+                  ("player-alpha-1", "player", "p-alpha-1"),
+                  ("club-alpha-1", "club", "c-alpha-1"))
+PHASE2_GUEST_TOKENS = ("guest_anon_tok_7721",)
+PHASE2_CART_USERS = ("player-alpha-1",)
+
+
+def _seed_phase2():
+    """Day 2 additions to every reset: match-m1 live at 1-0, default QR mappings, a valid unmerged guest
+    token and an empty member cart. player-beta-2 is seeded with the club-beta-1 roster in _seed_demo."""
+    m = PHASE2_MATCH
+    match_id = m["match_id"]
+    DB["leagues"][m["league_id"]]["fixtures"].append(
+        {"match_id": match_id, "home": m["home_team_id"], "away": m["away_team_id"], "scheduled_at": m["scheduled_at"]})
+    DB["matches"][match_id] = {k: m[k] for k in ("match_id", "league_id", "sport_id", "home_team_id",
+                                                 "away_team_id", "scheduled_at")}
+    # The 1-0 score goes through the real event engine, using the sport's own one-point event
+    sport = DB["sports"][m["sport_id"]]
+    init = {k: m[k] for k in ("sport_id", "home_team_id", "away_team_id", "league_id")}
+    steps = [("match_init", init), ("match_start", {}),
+             ("score", {"team_id": m["home_team_id"], "event_type": strategy_for(sport).unit_event(sport)})]
+    for i, (evt_type, payload) in enumerate(steps, 1):
+        _append_event({"event_id": f"{match_id}-e{i}", "match_id": match_id, "type": evt_type, "payload": payload})
+    DB["pinned_products"][match_id] = m["pinned_product_id"]
+    DB["pinned_variants"][match_id] = m["pinned_variant_id"]
+
+    DB["qr_codes"] = {entity_id: {"entity_id": entity_id, "entity_type": entity_type, "short_code": code,
+                                  "short_url": f"{PUBLIC_BASE_URL}/q/{code}", "scan_count": 0}
+                      for entity_id, entity_type, code in PHASE2_QR_SEED}
+    DB["guest_tokens"] = {token: {"guest_token": token, "role": "guest", "read_only": True, "merged": False,
+                                  "merged_into": None} for token in PHASE2_GUEST_TOKENS}
+    DB["carts"] = {user_id: {"user_id": user_id, "currency": "PKR", "items": []} for user_id in PHASE2_CART_USERS}
 
 
 # ==========================================
@@ -424,6 +541,16 @@ def _seed_state(seed=42, stock: Optional[dict] = None):
 # ==========================================
 @app.get("/health")
 def health_probe():
+    # Ready only once the Phase I + Phase II baseline seed is in place (Day 1 A1, Day 2 5.2)
+    with LOCK:
+        ready = PHASE2_MATCH["match_id"] in DB.get("matches", {}) and bool(DB.get("guest_tokens"))
+    failed = [] if ready else ["baseline_seed"]
+    if not DLQ_STORE.healthy():
+        failed.append("dlq_store")
+    if HEALTH_CHECK_MEDIA and not MEDIA.reachable():
+        failed.append("media_server")
+    if failed:
+        raise ApiError(503, "NOT_READY", "Platform is not ready", {"failed": failed})
     return {"status": "ok"}
 
 
@@ -441,13 +568,18 @@ def reset_state(body: Optional[dict] = None):
     f.check()
     with LOCK:
         _seed_state(seed=seed, stock=stock)
-        return {
+        publish_reset()
+        DLQ_STORE.clear()        # spec 5.8: queue_depth is 0 after a reset
+        response = {
             "status": "reset_complete",
             "seed": seed,
             "sports": [s["sport_id"] for s in BASELINE_SPORTS],
             "tenants": list(TENANT_SEED),
             "stock": {vid: v["stock"] for vid, v in DB["variants"].items()},
         }
+    # Outside the lock: keys and sessions are gone, so their live publishers are kicked too (best effort)
+    release_all_media()
+    return response
 
 
 # ==========================================
@@ -474,32 +606,22 @@ def _validate_sport(body: dict) -> dict:
     if model not in SCORING_MODELS:
         f.add("scoring_model")
 
+    strategy = SCORING_STRATEGIES.get(model) if isinstance(model, str) else None
     periods = body.get("periods")
     if not isinstance(periods, dict):
         f.add("periods")
-    elif model in SCORING_MODELS:
-        for key in PERIOD_FIELDS[model]:
-            if not is_int(periods.get(key)) or periods[key] < 1:
-                f.add(f"periods.{key}")
-        if model == "round" and is_int(periods.get("best_of")) and periods["best_of"] % 2 == 0:
-            f.add("periods.best_of")
+    elif strategy:
+        for field in strategy.invalid_period_fields(periods):
+            f.add(field)
 
     events = body.get("scoring_events")
     if not isinstance(events, dict) or not events:
         f.add("scoring_events")
     else:
         for key, cfg in events.items():
-            field = f"scoring_events.{key}"
-            if not EVENT_KEY_RE.fullmatch(key) or not isinstance(cfg, dict):
-                f.add(field)
-            elif model == "event" and not (is_int(cfg.get("points")) and cfg["points"] >= 1):
-                f.add(field)
-            elif model == "innings" and not (is_int(cfg.get("runs")) and cfg["runs"] >= 0
-                                             and isinstance(cfg.get("legal_ball"), bool)
-                                             and isinstance(cfg.get("wicket"), bool)):
-                f.add(field)
-            elif model == "round" and not (is_int(cfg.get("rounds")) and cfg["rounds"] >= 1):
-                f.add(field)
+            if (not EVENT_KEY_RE.fullmatch(key) or not isinstance(cfg, dict)
+                    or (strategy and not strategy.is_valid_event_config(cfg))):
+                f.add(f"scoring_events.{key}")
 
     if "draw_allowed" in body and not isinstance(body["draw_allowed"], bool):
         f.add("draw_allowed")
@@ -731,15 +853,12 @@ def _fold(match_id: str) -> Optional[dict]:
                         if r["payload"].get(k)})
 
     sport = DB["sports"].get(ctx.get("sport_id")) or {}
-    model = sport.get("scoring_model", "event")
-    scoring_events = sport.get("scoring_events", {})
+    strategy = strategy_for(sport)
     teams = [t for t in (ctx.get("home_team_id"), ctx.get("away_team_id")) if t]
-    totals = {t: 0 for t in teams}
     fair_play = {t: 0 for t in teams}
-    balls = {t: 0 for t in teams}
-    wickets = {t: 0 for t in teams}
     compensated_by = {r["payload"]["compensates"]: r["event_id"] for r in log if r["type"] == "compensation"}
     status, tiebreak = "upcoming", None
+    score_events = []
 
     for r in log:
         if r["type"] == "compensation" or r["event_id"] in compensated_by:
@@ -754,19 +873,13 @@ def _fold(match_id: str) -> Optional[dict]:
             tiebreak = team
         elif r["type"] == "discipline" and team in fair_play:
             fair_play[team] -= abs(p["points"])
-        elif r["type"] == "score" and team in totals:
-            cfg = scoring_events.get(p["event_type"], {})
-            if model == "innings":
-                totals[team] += cfg.get("runs", 0)
-                balls[team] += 1 if cfg.get("legal_ball") else 0
-                wickets[team] += 1 if cfg.get("wicket") else 0
-            elif model == "round":
-                totals[team] += cfg.get("rounds", 1)
-            else:
-                totals[team] += cfg.get("points", 1)
+        elif r["type"] == "score":
+            score_events.append((team, p["event_type"]))
 
-    return {"match_id": match_id, "ctx": ctx, "sport": sport, "model": model, "log": log, "status": status,
-            "totals": totals, "fair_play": fair_play, "balls": balls, "wickets": wickets,
+    tally = strategy.calculate_match_state(sport, teams, score_events)
+    return {"match_id": match_id, "ctx": ctx, "sport": sport, "model": strategy.scoring_model,
+            "strategy": strategy, "tally": tally, "log": log, "status": status,
+            "totals": tally.totals, "fair_play": fair_play, "balls": tally.balls, "wickets": tally.wickets,
             "tiebreak": tiebreak, "compensated_by": compensated_by}
 
 
@@ -786,18 +899,16 @@ def _outcome(st: dict):
 
 
 def _score_object(st: dict) -> dict:
-    ctx, model = st["ctx"], st["model"]
-    bpo = (st["sport"].get("periods") or {}).get("balls_per_over", 6)
+    ctx = st["ctx"]
 
     def side(team_id):
-        innings = model == "innings" and team_id is not None
-        balls = st["balls"].get(team_id, 0) if innings else None
+        extras = st["strategy"].side_extras(st["sport"], st["tally"], team_id)
         return {
             "team_id": team_id,
             "score": st["totals"].get(team_id, 0),
-            "wickets": st["wickets"].get(team_id, 0) if innings else None,
-            "balls": balls,
-            "overs": f"{balls // bpo}.{balls % bpo}" if innings else None,
+            "wickets": extras["wickets"],
+            "balls": extras["balls"],
+            "overs": extras["overs"],
             "fair_play": st["fair_play"].get(team_id, 0),
         }
 
@@ -886,7 +997,7 @@ def _check_transition(match_id: str, evt_type: str, payload: dict):
 
     if evt_type in ("score", "discipline", "tiebreak_winner") and team not in teams:
         raise ApiError(400, "VALIDATION_ERROR", "team_id is not part of this match", {"fields": ["payload.team_id"]})
-    if evt_type == "score" and payload["event_type"] not in st["sport"].get("scoring_events", {}):
+    if evt_type == "score" and payload["event_type"] not in st["strategy"].get_supported_events(st["sport"]):
         raise ApiError(400, "UNKNOWN_EVENT_TYPE", "event_type is not defined for this sport",
                        {"event_type": payload["event_type"], "sport_id": st["ctx"].get("sport_id")})
 
@@ -913,24 +1024,9 @@ def _check_transition(match_id: str, evt_type: str, payload: dict):
             raise ApiError(409, "ILLEGAL_TRANSITION", "A tiebreak winner needs level scores and no prior tiebreak",
                            {"match_id": match_id})
     elif evt_type == "score":
-        periods = st["sport"].get("periods") or {}
-        if st["model"] == "innings":
-            per_team = periods.get("innings_per_team", 1)
-            ball_limit = periods.get("overs_per_innings", 20) * periods.get("balls_per_over", 6) * per_team
-            wicket_limit = periods.get("wickets_per_innings", 10) * per_team
-
-            def complete(t):
-                return st["balls"].get(t, 0) >= ball_limit or st["wickets"].get(t, 0) >= wicket_limit
-
-            other = teams[1] if team == teams[0] else teams[0]
-            chased = complete(other) and st["totals"].get(team, 0) > st["totals"].get(other, 0)
-            if complete(team) or chased:
-                raise ApiError(409, "INNINGS_COMPLETE", "This team's innings is complete", {"team_id": team})
-        elif st["model"] == "round":
-            needed = periods.get("best_of", 1) // 2 + 1
-            if max(st["totals"].values(), default=0) >= needed:
-                raise ApiError(409, "SERIES_ALREADY_DECIDED", "The series has already been decided",
-                               {"match_id": match_id})
+        violation = st["strategy"].validate_score_event(st["sport"], st["tally"], team, match_id)
+        if violation:
+            raise ApiError(violation.status, violation.code, violation.message, violation.details)
 
 
 def _append_event(evt: dict):
@@ -984,6 +1080,7 @@ def _append_event(evt: dict):
         DB["event_index"][event_id] = {"fingerprint": body_fp, "response": response, "match_id": match_id}
         if evt_type == "match_end":
             _release_deferred_transfers(match_id)
+        publish_match(match_id)  # live score push to open Guest Web Player pages (NFR-1)
         return response, True
 
 
@@ -1016,15 +1113,28 @@ def _league_match_ids(league: dict) -> list:
     return ids
 
 
+def _lots_key(seed: int, league_id: str, team_id: str) -> str:
+    """Day 1 5.10 draw_lots key; teams are ordered ascending by it, first = best."""
+    return hashlib.sha256(f"{seed}|{league_id}|{team_id}".encode("utf-8")).hexdigest()
+
+
+def _add_parts(acc: dict, parts: dict):
+    for key, value in parts.items():
+        acc[key] = acc.get(key, 0) + value
+
+
 def _standings(league_id: str) -> dict:
     league = DB["leagues"].get(league_id)
     if league is None:
         raise ApiError(404, "LEAGUE_NOT_FOUND", "League not found", {"league_id": league_id})
     pts = league["points"]
     teams = league["teams"]
+    strategy = strategy_for(DB["sports"].get(league["sport_id"]))
     rows = {t: {"team_id": t, "played": 0, "won": 0, "drawn": 0, "lost": 0, "scored": 0, "conceded": 0,
                 "diff": 0, "points": 0, "fair_play": 0} for t in teams}
     h2h = {}
+    diff_parts = {t: {} for t in teams}   # summed differential ingredients over all completed matches
+    h2h_parts = {}                        # team -> opponent -> summed ingredients (for h2h_diff)
     remaining = {t: 0 for t in teams}
 
     for match_id in _league_match_ids(league):
@@ -1055,26 +1165,36 @@ def _standings(league_id: str) -> dict:
             entry["points"] += gained
             entry["scored"] += scored
             entry["conceded"] += conceded
-    for row in rows.values():
-        row["diff"] = row["scored"] - row["conceded"]
+            parts = st["strategy"].diff_components(st["sport"], st["tally"], team, opp)
+            _add_parts(diff_parts[team], parts)
+            _add_parts(h2h_parts.setdefault(team, {}).setdefault(opp, {}), parts)
+    for team, row in rows.items():
+        row["diff"] = strategy.differential(diff_parts[team])
 
-    lots = sorted(teams)
-    random.Random(league.get("lots_seed", 42)).shuffle(lots)
+    seed = league.get("lots_seed", 42)
+    lots_rank = {t: i for i, t in enumerate(sorted(teams, key=lambda t: _lots_key(seed, league_id, t)))}
+    # tie_break_order, then draw_lots (Day 1 5.10 step 2)
+    criteria = list(league["tie_break_order"])
+    if "draw_lots" not in criteria:
+        criteria.append("draw_lots")
 
     def value(criterion, team, group):
-        if criterion in ("h2h_points", "h2h_diff"):
+        if criterion == "h2h_points":
             mini = [h2h.get(team, {}).get(o) for o in group if o != team]
-            mini = [m for m in mini if m]
-            if criterion == "h2h_points":
-                return sum(m["points"] for m in mini)
-            return sum(m["scored"] - m["conceded"] for m in mini)
+            return sum(m["points"] for m in mini if m)
+        if criterion == "h2h_diff":
+            mini = {}
+            for opp in group:
+                if opp != team:
+                    _add_parts(mini, h2h_parts.get(team, {}).get(opp, {}))
+            return strategy.differential(mini)
         if criterion == "overall_diff":
             return rows[team]["diff"]
         if criterion == "scored":
             return rows[team]["scored"]
         if criterion == "fair_play":
             return rows[team]["fair_play"]
-        return -lots.index(team)  # draw_lots
+        return -lots_rank[team]  # draw_lots
 
     def order(group, criteria):
         """Orders teams level on points. h2h criteria are recomputed inside each smaller tied subgroup."""
@@ -1091,14 +1211,14 @@ def _standings(league_id: str) -> dict:
                 if len(sub) == 1:
                     out.append((sub[0], criterion))
                 else:
-                    out.extend(order(sub, league["tie_break_order"]))
+                    out.extend(order(sub, criteria))
             return out
         return [(t, None) for t in sorted(group)]
 
     ordered = []
     for p in sorted({r["points"] for r in rows.values()}, reverse=True):
         group = sorted(t for t in teams if rows[t]["points"] == p)
-        ordered.extend(order(group, league["tie_break_order"]))
+        ordered.extend(order(group, criteria))
 
     spots = league["qualification_spots"]
     max_possible = {t: rows[t]["points"] + remaining[t] * max(pts["win"], pts["draw"], pts["loss"]) for t in teams}
@@ -1592,6 +1712,8 @@ def _authenticate(authorization: Optional[str]) -> dict:
     if (not isinstance(claims, dict) or claims.get("role") not in ROLES
             or not is_int(claims.get("exp")) or claims["exp"] <= int(time.time())):
         raise unauthenticated
+    if claims.get("sub") in DB.get("erased_subjects", ()):  # NFR-9: tokens of erased accounts stop working
+        raise unauthenticated
     return claims
 
 
@@ -1646,6 +1768,34 @@ def login(body: dict):
             "user": _public_user(user),
             "tenant": DB["tenants"].get(user["tenant_id"]),
         }
+
+
+EMAIL_RE = re.compile(r"[^@\s]{1,64}@[^@\s]{1,190}\.[^@\s]{1,20}")
+
+
+@app.post("/api/v1/auth/register", status_code=201)
+def register(body: dict):
+    """Progressive registration from the Guest Web Player: creates a viewer account in the public tenant."""
+    f = Fields()
+    email = body.get("email")
+    if not isinstance(email, str) or not EMAIL_RE.fullmatch(email.strip()):
+        f.add("email")
+    if not is_text(body.get("name"), 80):
+        f.add("name")
+    password = body.get("password")
+    if not isinstance(password, str) or not 8 <= len(password) <= 128:
+        f.add("password")
+    f.check()
+    key = email.strip().lower()
+    with LOCK:
+        if key in DB["users"]:
+            raise ApiError(409, "USER_EXISTS", "An account with this email already exists", {"email": key})
+        user = {"user_id": f"user-{hashlib.sha256(key.encode('utf-8')).hexdigest()[:12]}", "email": key,
+                "name": body["name"].strip(), "role": "viewer", "tenant_id": "tenant-alpha", "club_id": None,
+                "league_id": None, "player_id": None, "_password_hash": _hash_password(password)}
+        DB["users"][key] = user
+        return {"token": _issue_token(user), "token_type": "Bearer", "expires_in": TOKEN_TTL_SECONDS,
+                "user": _public_user(user), "tenant": DB["tenants"].get(user["tenant_id"])}
 
 
 @app.get("/api/v1/me")
@@ -2048,10 +2198,198 @@ def api_sync(body: dict, authorization: Optional[str] = Header(None)):
     return _sync(body, claims)
 
 
+# ==========================================
+# PHASE II GROUP 2: GUEST WEB PLAYER, GUEST BOUNDARY, CART MERGE, LIVE STREAMS
+# ==========================================
+LIVE_FEED = LiveFeed()
+GUEST_SESSIONS = GuestSessionService(DB, LOCK)
+GUEST_CARTS = GuestCartService(DB, LOCK, ApiError, sign_day2, fingerprint, simulate_guest_write)
+CHAT = ChatService(DB, LOCK, ApiError, LIVE_FEED, now_ts)
+
+
+def live_snapshot(match_id: str) -> dict:
+    """Compact live state for the Guest Web Player and the SSE score stream, rebuilt from the event log."""
+    with LOCK:
+        st = _fold(match_id)
+        if st is None:
+            raise ApiError(404, "MATCH_NOT_FOUND", "Match not found", {"match_id": match_id})
+        outcome, winner = _outcome(st)
+        ctx = st["ctx"]
+        home, away = ctx.get("home_team_id"), ctx.get("away_team_id")
+        return {"match_id": match_id, "sport_id": ctx.get("sport_id"), "league_id": ctx.get("league_id"),
+                "status": st["status"], "outcome": outcome, "winner_team_id": winner, "version": len(st["log"]),
+                "scheduled_at": ctx.get("scheduled_at"),
+                "home": {"team_id": home, "name": _team_name(home), "score": st["totals"].get(home, 0)},
+                "away": {"team_id": away, "name": _team_name(away), "score": st["totals"].get(away, 0)},
+                "web_route": target_route("match", match_id, st["status"])}
+
+
+def entity_route(entity_id: str) -> str:
+    """Current Guest Web Player route for a QR-mapped entity (Day 2 5.6 target route rules)."""
+    with LOCK:
+        mapping = DB["qr_codes"][entity_id]
+        status = live_snapshot(entity_id)["status"] if mapping["entity_type"] == "match" else None
+        return target_route(mapping["entity_type"], entity_id, status)
+
+
+def scan_short_code(short_code: str) -> str:
+    """Counts one scan and returns the live target route. No IP, cookie or user agent is stored (NFR-9)."""
+    with LOCK:
+        mapping = next((q for q in DB["qr_codes"].values() if q["short_code"] == short_code), None)
+        if mapping is None:
+            raise ApiError(404, "QR_NOT_FOUND", "No QR mapping for this short code", {"short_code": short_code})
+        mapping["scan_count"] += 1
+        return entity_route(mapping["entity_id"])
+
+
+def club_match_ids(club_id: Optional[str]) -> list:
+    with LOCK:
+        return [mid for mid, ctx in DB["matches"].items()
+                if club_id is not None and club_id in (ctx.get("home_team_id"), ctx.get("away_team_id"))]
+
+
+def publish_match(match_id: str):
+    channel = f"match:{match_id}"
+    if not SEEDING["active"] and LIVE_FEED.has_subscribers(channel):
+        LIVE_FEED.publish(channel, "score", live_snapshot(match_id))
+
+
+def publish_reset():
+    """After /audit/v1/reset, open pages receive the re-seeded score and an empty chat."""
+    for channel in LIVE_FEED.channels("match:"):
+        try:
+            publish_match(channel.split(":", 1)[1])
+        except ApiError:
+            pass  # the match no longer exists after the reset
+    for channel in LIVE_FEED.channels("chat:"):
+        LIVE_FEED.publish(channel, "reset", {"chat_room_id": channel.split(":", 1)[1], "messages": []})
+
+
+# ==========================================
+# PHASE II GROUP 3: MEDIA, STREAM KEYS, CO-STREAMING, MODERATION, DLQ, METRICS, PRIVACY, QR
+# ==========================================
+MEDIA = MediaServerClient(MEDIAMTX_API_URL)
+MEDIA_URLS = MediaUrls(MEDIA_PUBLIC_HOST)
+DLQ_STORE = DeadLetterStore(DLQ_PATH)
+NOTIFICATIONS = NotificationDispatcher(DLQ_STORE, RetryPolicy())
+STREAM_KEY_STORE = StreamKeyStore(DB)
+
+
+def player_exists(player_id: str) -> bool:
+    """Players are roster players (player-alpha-1, player-beta-2, ...)."""
+    with LOCK:
+        return player_id in DB["roster_players"]
+
+
+def _key_status(stream_key: str):
+    with LOCK:
+        return STREAM_KEY_STORE.status_view(stream_key)
+
+
+def qr_scans_total() -> int:
+    with LOCK:
+        return sum(q["scan_count"] for q in DB["qr_codes"].values())
+
+
+STREAM_KEYS = StreamKeyService(DB, LOCK, ApiError, sign_day2, STREAM_KEY_STORE, MEDIA_URLS, MEDIA, player_exists, now_ts)
+COSTREAMS = CostreamService(DB, LOCK, ApiError, sign_day2, MEDIA_URLS, player_exists, MEDIA, fingerprint)
+MODERATION = ModerationService(DB, LOCK, ApiError, sign_day2, ModerationRegistry(DB, LOCK), NOTIFICATIONS)
+CHAT.set_moderator(MODERATION.moderate_live)  # live chat passes through the same engine before broadcast
+PRIVACY = PrivacyService(DB, LOCK, ApiError, now_ts)
+MEDIA_ACCESS = MediaAccessPolicy(_key_status, COSTREAMS.get, MEDIA_INTERNAL_USER, MEDIA_INTERNAL_PASS)
+METRICS = MetricsService(LIVE_FEED.subscriber_count, MEDIA, DLQ_STORE.depth, qr_scans_total)
+QR_PREFIXES = {"match": "m", "player": "p", "club": "c", "costream": "cs"}
+
+
+def release_all_media() -> int:
+    """Best-effort kick of every live and co-stream publisher (no-op when media is off or unreachable)."""
+    return sum(1 for p in MEDIA.paths() if str(p.get("name", "")).startswith(("live/", "costream/"))
+               and MEDIA.kick_publisher(p["name"]))
+
+
+def _entity_type(entity_id: str) -> Optional[str]:
+    if entity_id in DB["matches"] or DB["events"].get(entity_id):
+        return "match"
+    if entity_id in DB["roster_players"]:
+        return "player"
+    if entity_id in DB["clubs"]:
+        return "club"
+    if entity_id in DB["costream_sessions"]:
+        return "costream"
+    return None
+
+
+def qr_mapping(entity_id: str) -> Optional[dict]:
+    """The entity's QR mapping; known matches, players, clubs and co-streams get one on first use."""
+    with LOCK:
+        mapping = DB["qr_codes"].get(entity_id)
+        if mapping is not None or not is_id(entity_id):
+            return mapping
+        kind = _entity_type(entity_id)
+        if kind is None:
+            return None
+        code = f"{QR_PREFIXES[kind]}-{hashlib.sha256(entity_id.encode('utf-8')).hexdigest()[:10]}"
+        mapping = {"entity_id": entity_id, "entity_type": kind, "short_code": code,
+                   "short_url": f"{PUBLIC_BASE_URL}/q/{code}", "scan_count": 0}
+        DB["qr_codes"][entity_id] = mapping
+        return mapping
+
+
+def qr_view(entity_id: str, count_scan: bool = True) -> dict:
+    """GET /audit/v1/qr/{entity_id}: live target route and status, signed with DAY2_SALT (spec 5.3)."""
+    with LOCK:
+        mapping = qr_mapping(entity_id)
+        if mapping is None:
+            raise ApiError(404, "QR_NOT_FOUND", "No QR mapping for this entity", {"entity_id": entity_id})
+        if count_scan:
+            mapping["scan_count"] += 1
+        kind = mapping["entity_type"]
+        if kind == "match":
+            status = live_snapshot(entity_id)["status"]
+        elif kind == "costream":
+            status = (DB["costream_sessions"].get(entity_id) or {}).get("status", "pending")
+        else:
+            status = "active"
+        route = target_route(kind, entity_id, status if kind == "match" else None)
+        base = f"{PUBLIC_BASE_URL}/audit/v1/qr/{entity_id}/export"
+        return {"entity_id": entity_id, "entity_type": kind, "entity_status": status,
+                "short_url": mapping["short_url"], "target_route": route,
+                "deep_link_uri": f"nascon://{'stream' if kind == 'costream' else 'entity'}/{entity_id}",
+                "scan_count": mapping["scan_count"],
+                "export_formats": {"svg": f"{base}.svg", "png": f"{base}.png", "pdf": f"{base}.pdf"},
+                "signature": sign_day2(entity_id, {"entity_id": entity_id, "short_url": mapping["short_url"],
+                                                   "target_route": route})}
+
+
+def media_event(event: str, path: str) -> dict:
+    """MediaMTX runOnReady / runOnNotReady: presence bookkeeping and co-stream disconnect handoff."""
+    if event not in ("ready", "not_ready") or not isinstance(path, str) or not path:
+        raise ApiError(400, "VALIDATION_ERROR", "Unknown media event", {"fields": ["event"]})
+    with LOCK:
+        if event == "ready":
+            DB["media_presence"][path] = {"since": now_ts()}
+        else:
+            DB["media_presence"].pop(path, None)
+        DB["media_event_log"].append({"event": event, "path": path, "at": time.time()})
+        del DB["media_event_log"][:-100]
+    result = {"event": event, "path": path}
+    parts = path.split("/")
+    if event == "not_ready" and len(parts) == 3 and parts[0] == "costream":
+        result["session"] = COSTREAMS.handle_disconnect(parts[1], parts[2])
+    return result
+
+
+# One application: the guest boundary wraps every route; every router joins the existing app
+app.add_middleware(GuestBoundaryMiddleware)
+for _routes in (guest_web_routes, guest_cart_routes, live_routes, stream_routes, costream_routes, moderation_routes,
+                metrics_routes, privacy_routes, qr_routes, media_routes):
+    app.include_router(_routes.build_router(sys.modules[__name__]))
+app.mount("/web/static", StaticFiles(directory=str(WEB_DIR / "static")), name="guest-static")
+
 _seed_state()
 
 
 if __name__ == "__main__":
     import uvicorn
 
-    uvicorn.run("main:app", host="0.0.0.0", port=8000)
+    uvicorn.run("main:app", host=os.getenv("HOST", "0.0.0.0"), port=int(os.getenv("PORT", "8080")))

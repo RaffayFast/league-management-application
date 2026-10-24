@@ -38,29 +38,40 @@ class ApiException implements Exception {
 
   /// True when the server was never reached or did not answer: the action can be
   /// queued for offline sync and cached data can be shown.
-  bool get isConnectivity => kind == ApiErrorKind.network || kind == ApiErrorKind.timeout;
+  bool get isConnectivity =>
+      kind == ApiErrorKind.network || kind == ApiErrorKind.timeout;
 
-  List<String> get fields => asList(details['fields']).map((e) => e.toString()).toList();
+  List<String> get fields =>
+      asList(details['fields']).map((e) => e.toString()).toList();
 
   int? get retryAfterSeconds => asIntOrNull(details['retry_after_seconds']);
 
   factory ApiException.network([String message = 'Server unreachable']) =>
-      ApiException(kind: ApiErrorKind.network, code: 'NETWORK_ERROR', message: message);
+      ApiException(
+          kind: ApiErrorKind.network, code: 'NETWORK_ERROR', message: message);
 
-  factory ApiException.timeout() =>
-      const ApiException(kind: ApiErrorKind.timeout, code: 'TIMEOUT', message: 'Request timed out');
+  factory ApiException.timeout() => const ApiException(
+      kind: ApiErrorKind.timeout,
+      code: 'TIMEOUT',
+      message: 'Request timed out');
 
-  factory ApiException.malformed(String message) =>
-      ApiException(kind: ApiErrorKind.malformed, code: 'MALFORMED_RESPONSE', message: message);
+  factory ApiException.malformed(String message) => ApiException(
+      kind: ApiErrorKind.malformed,
+      code: 'MALFORMED_RESPONSE',
+      message: message);
 
   /// Builds from a non-2xx response body; tolerates bodies that are not envelopes.
-  factory ApiException.fromResponse(int status, dynamic body, {String? retryAfterHeader}) {
+  factory ApiException.fromResponse(int status, dynamic body,
+      {String? retryAfterHeader}) {
     final error = body is Map ? asMap(body['error']) : <String, dynamic>{};
     final details = asMap(error['details']);
-    if (status == 429 && retryAfterHeader != null && !details.containsKey('retry_after_seconds')) {
+    if (status == 429 &&
+        retryAfterHeader != null &&
+        !details.containsKey('retry_after_seconds')) {
       details['retry_after_seconds'] = int.tryParse(retryAfterHeader);
     }
-    final code = asString(error['code'], status >= 500 ? 'SERVER_ERROR' : 'HTTP_$status');
+    final code = asString(
+        error['code'], status >= 500 ? 'SERVER_ERROR' : 'HTTP_$status');
     return ApiException(
       kind: status >= 500 ? ApiErrorKind.server : ApiErrorKind.http,
       code: code,

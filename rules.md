@@ -11,10 +11,11 @@
 
 ## 2. Technology & Coding Rules
 **Hard rules (penalties):**
-- No `if sport == "football"` / `if event == "goal"` anywhere (−8). Branch only on `scoring_model`.
+- No `if sport == "football"` / `if event == "goal"` anywhere (−8). Branch only on `scoring_model`, through the strategies in `sports_engine.py` (`tests/test_sports_engine.py` enforces this).
 - No Firebase/Supabase/Amplify (−10). No third-party fixture libraries.
 - `docker compose up -d --build` must work on a clean machine, no manual steps, <10 min, `/health` 200 within 120 s (−10).
-- `DAY1_SALT` read **only** from env.
+- `DAY1_SALT` and `DAY2_SALT` read **only** from env.
+- Guest tokens (`guest_anon_tok_*`) never write: the boundary middleware returns 403 `GUEST_WRITE_FORBIDDEN` server-side; hiding buttons is not enough.
 
 **API rules:**
 - IDs: 1–64 chars `A-Za-z0-9_.:-`, never contain `|`; store/return verbatim.
@@ -28,12 +29,12 @@
 - Authorization is checked **before** anything else; cross-tenant = 403 (not 404); bad/expired/`alg:none` token = 401.
 - Every request < 5 s; reset < 10 s; `/reset` must leave identical state each time.
 
-**Python style:** type hints, Pydantic models for request bodies, thin routers, logic in `services/` and pure functions in `domain/`, one test file per area, pytest only.
+**Python style:** type hints, thin route handlers calling the service functions in `main.py`, pure scoring rules in `sports_engine.py`, one test file per area under `tests/`, pytest only (`./run_tests.sh`).
 
-**Flutter style:** Provider for state, repositories wrap `dio` + `sqflite`, no business logic in widgets, every network call has loading/error/empty states, tokens only in `flutter_secure_storage`, server URL changeable in Settings (emulator `10.0.2.2:8080`).
+**Flutter style:** Riverpod for state, repositories wrap `dio` + `sqflite`, no business logic in widgets, every network call has loading/error/empty states, tokens only in `flutter_secure_storage`, server URL changeable in Settings (emulator `10.0.2.2:8080`).
 
 ## 3. Project Structure Rules
-- Follow the tree in `Architecture.md` exactly.
+- Follow the repository layout in `Architecture.md` §2 (backend = `main.py` + `sports_engine.py`, Flutter app in `mobile/`). Do not create folders just because an old doc names them.
 - Required in repo root: `docker-compose.yml`, `.env.example`, `README.md` (run steps + 5 demo accounts), `TRACEABILITY.md` (FR/NFR → files + tests), `tests/`, `run_tests.sh`, `COVERAGE.json`, `mobile/release/app-release.apk`.
 - Demo accounts must exist after startup **and** every `/reset` (password `Nascon@26`).
 - `COVERAGE.json` must be honest (>2 pts overstated voids the bonus).
@@ -41,7 +42,8 @@
 
 ## 4. API Contract & Networking Rules
 - `api_contract.md` is the single source of truth for field names/routes. Backend and Flutter code must both follow it; change the contract first, then the code.
-- Container binds `0.0.0.0:8000`; compose maps host `8080:8000`. Clients always use port **8080**.
-- App base URL is configurable at runtime (Settings screen); default `http://192.168.43.102:8080`, emulator `http://10.0.2.2:8080`. Allow Windows/Mac firewall access to port 8080 and keep phone + laptop on the same hotspot.
+- The backend binds `0.0.0.0:8080` (bare `python main.py` and compose alike). Other host ports: MediaMTX 1935/8888/8889, Selenium hub 4444, Appium 4723 (opt-in profile). Clients always use port **8080** for the API.
+- Contract URLs use the public host (`MEDIA_PUBLIC_HOST`); container-to-container traffic uses service names (`http://mediamtx:9997`, `http://web:8080`).
+- App base URL is configurable at runtime (Settings screen); default in `mobile/lib/core/config/app_config.dart`, emulator `http://10.0.2.2:8080`. Allow Windows/Mac firewall access to port 8080 and keep phone + laptop on the same hotspot.
 - CORS allows all origins. Pydantic v2 strict models; 422 is converted to 400 `VALIDATION_ERROR`.
 - App treats any 2xx as success and never shows raw error codes.

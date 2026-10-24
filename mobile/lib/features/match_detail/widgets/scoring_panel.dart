@@ -30,14 +30,18 @@ class _ScoringPanelState extends ConsumerState<ScoringPanel> {
 
   ScoreObject get score => widget.score;
 
-  Future<void> _send({required String type, required Json payload, required String label, required String confirmText}) async {
-    final ok = await confirmAction(context, title: 'Confirm', message: confirmText, confirmLabel: 'Submit');
+  Future<void> _send(
+      {required String type,
+      required Json payload,
+      required String label,
+      required String confirmText}) async {
+    final ok = await confirmAction(context,
+        title: 'Confirm', message: confirmText, confirmLabel: 'Submit');
     if (!ok || !mounted) return;
-    await submitScoringEvent(context, ref, score: score, type: type, payload: payload, label: label,
-        onBusy: (b) {
-          if (mounted) setState(() => _busy = b);
-        },
-        onDone: widget.onChanged);
+    await submitScoringEvent(context, ref,
+        score: score, type: type, payload: payload, label: label, onBusy: (b) {
+      if (mounted) setState(() => _busy = b);
+    }, onDone: widget.onChanged);
   }
 
   @override
@@ -53,7 +57,9 @@ class _ScoringPanelState extends ConsumerState<ScoringPanel> {
     return SectionCard(
       title: 'Scoring',
       icon: Icons.scoreboard_outlined,
-      trailing: Text('v${score.version}', style: const TextStyle(color: AppColors.textMuted, fontWeight: FontWeight.w600)),
+      trailing: Text('v${score.version}',
+          style: const TextStyle(
+              color: AppColors.textMuted, fontWeight: FontWeight.w600)),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
@@ -62,7 +68,8 @@ class _ScoringPanelState extends ConsumerState<ScoringPanel> {
               padding: EdgeInsets.only(bottom: AppSpacing.md),
               child: Text(
                 'You are offline. Events are saved on this device and sent when you reconnect.',
-                style: TextStyle(color: AppColors.warning, fontWeight: FontWeight.w600),
+                style: TextStyle(
+                    color: AppColors.warning, fontWeight: FontWeight.w600),
               ),
             ),
           if (score.status == MatchStatus.upcoming)
@@ -73,18 +80,21 @@ class _ScoringPanelState extends ConsumerState<ScoringPanel> {
                         type: 'match_start',
                         payload: const {},
                         label: 'Start match · ${score.matchId}',
-                        confirmText: 'Start ${score.homeLabel} vs ${score.awayLabel}?',
+                        confirmText:
+                            'Start ${score.homeLabel} vs ${score.awayLabel}?',
                       ),
               icon: const Icon(Icons.play_arrow),
               label: const Text('Start match'),
             ),
           if (score.status == MatchStatus.inProgress) ...[
             if (sportId == null)
-              const Text('This match has no sport configured, so scoring options are unavailable.')
+              const Text(
+                  'This match has no sport configured, so scoring options are unavailable.')
             else
               ref.watch(sportProvider(sportId)).when(
                     loading: () => const LinearProgressIndicator(),
-                    error: (e, _) => Text(friendlyError(e), style: const TextStyle(color: AppColors.danger)),
+                    error: (e, _) => Text(friendlyError(e),
+                        style: const TextStyle(color: AppColors.danger)),
                     data: (sport) => _ScoreControls(
                       sport: sport.data,
                       teams: teams,
@@ -97,7 +107,8 @@ class _ScoringPanelState extends ConsumerState<ScoringPanel> {
                           type: 'score',
                           payload: {'team_id': team.$1, 'event_type': def.key},
                           label: '${def.label} — ${team.$2}',
-                          confirmText: 'Record "${def.label}" (${def.describe(sport.data.scoringModel)}) for ${team.$2}?',
+                          confirmText:
+                              'Record "${def.label}" (${def.describe(sport.data.scoringModel)}) for ${team.$2}?',
                         );
                       },
                     ),
@@ -110,14 +121,16 @@ class _ScoringPanelState extends ConsumerState<ScoringPanel> {
                         type: 'match_end',
                         payload: const {},
                         label: 'End match · ${score.matchId}',
-                        confirmText: 'End the match at ${score.home.display}–${score.away.display}?',
+                        confirmText:
+                            'End the match at ${score.home.display}–${score.away.display}?',
                       ),
               icon: const Icon(Icons.flag),
               label: const Text('End match'),
             ),
           ],
           if (score.status == MatchStatus.completed)
-            const Text('This match is finished. Earlier events can still be corrected from the timeline below.'),
+            const Text(
+                'This match is finished. Earlier events can still be corrected from the timeline below.'),
         ],
       ),
     );
@@ -152,13 +165,16 @@ class _ScoreControls extends StatelessWidget {
         SegmentedButton<String>(
           segments: [
             for (final t in teams)
-              ButtonSegment(value: t.$1, label: Text(t.$2, overflow: TextOverflow.ellipsis)),
+              ButtonSegment(
+                  value: t.$1,
+                  label: Text(t.$2, overflow: TextOverflow.ellipsis)),
           ],
           selected: {teamId!},
           onSelectionChanged: (s) => onTeam(s.first),
         ),
         const SizedBox(height: AppSpacing.md),
-        Text('${sport.name} events', style: Theme.of(context).textTheme.labelLarge),
+        Text('${sport.name} events',
+            style: Theme.of(context).textTheme.labelLarge),
         const SizedBox(height: AppSpacing.sm),
         Wrap(
           spacing: AppSpacing.sm,
@@ -167,7 +183,8 @@ class _ScoreControls extends StatelessWidget {
             for (final def in sport.scoringEvents)
               ActionChip(
                 avatar: const Icon(Icons.add_circle_outline, size: 18),
-                label: Text('${def.label} · ${def.describe(sport.scoringModel)}'),
+                label:
+                    Text('${def.label} · ${def.describe(sport.scoringModel)}'),
                 onPressed: busy ? null : () => onEvent(def),
               ),
           ],
@@ -190,16 +207,23 @@ Future<void> submitScoringEvent(
   required VoidCallback onDone,
 }) async {
   final service = ref.read(scoringServiceProvider);
-  final body = ScoringService.buildEventBody(matchId: score.matchId, type: type, payload: payload);
+  final body = ScoringService.buildEventBody(
+      matchId: score.matchId, type: type, payload: payload);
   onBusy(true);
   try {
-    final outcome = await service.submit(body, observedVersion: score.version, label: label);
+    final outcome = await service.submit(body,
+        observedVersion: score.version, label: label);
     if (!context.mounted) return;
     switch (outcome) {
       case ScoringConfirmed(:final ack, :final replay):
-        showSnack(context, replay ? 'Already recorded (#${ack.sequence}).' : 'Recorded as event #${ack.sequence}.');
+        showSnack(
+            context,
+            replay
+                ? 'Already recorded (#${ack.sequence}).'
+                : 'Recorded as event #${ack.sequence}.');
       case ScoringQueued():
-        showSnack(context, 'Saved on this device. It will be sent when you are back online.');
+        showSnack(context,
+            'Saved on this device. It will be sent when you are back online.');
     }
     onDone();
   } on ApiException catch (e) {
@@ -208,12 +232,16 @@ Future<void> submitScoringEvent(
       final queue = await confirmAction(
         context,
         title: 'Server unreachable',
-        message: '${friendlyError(e)}\n\nSave this event on the device and send it automatically later?',
+        message:
+            '${friendlyError(e)}\n\nSave this event on the device and send it automatically later?',
         confirmLabel: 'Save offline',
       );
       if (queue) {
         await service.queue(body, observedVersion: score.version, label: label);
-        if (context.mounted) showSnack(context, 'Saved on this device. It will sync when the server is reachable.');
+        if (context.mounted) {
+          showSnack(context,
+              'Saved on this device. It will sync when the server is reachable.');
+        }
         onDone();
       }
     } else {

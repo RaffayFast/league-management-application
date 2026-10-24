@@ -13,6 +13,7 @@ import '../../core/widgets/badges.dart';
 import '../../core/widgets/dialogs.dart';
 import '../../core/widgets/state_views.dart';
 import '../auth/auth_controller.dart';
+import '../cart/widgets/guest_cart_widgets.dart';
 import 'cart_controller.dart';
 import 'data/store_repository.dart';
 
@@ -50,7 +51,8 @@ class _CartScreenState extends ConsumerState<CartScreen> {
     final ok = await confirmAction(
       context,
       title: 'Confirm payment',
-      message: 'Pay for ${current.itemCount} item(s), estimated ${formatMoney(current.estimatedSubtotalMinor)} before discount, '
+      message:
+          'Pay for ${current.itemCount} item(s), estimated ${formatMoney(current.estimatedSubtotalMinor)} before discount, '
           'with "${_token.label}"?\n\nThe final amount is calculated by the server.',
       confirmLabel: 'Pay now',
     );
@@ -70,12 +72,17 @@ class _CartScreenState extends ConsumerState<CartScreen> {
           );
       ref.read(cartProvider.notifier).clear();
       ref.invalidate(productsProvider);
-      if (mounted) context.pushReplacement('/receipt/${Uri.encodeComponent(order.orderId)}');
+      if (mounted) {
+        context
+            .pushReplacement('/receipt/${Uri.encodeComponent(order.orderId)}');
+      }
     } on ApiException catch (e) {
       ref.invalidate(productsProvider); // stock may have changed
       setState(() {
         _errorIcon = switch (e.code) {
-          'PAYMENT_DECLINED' || 'PAYMENT_CAPTURE_FAILED' => Icons.credit_card_off,
+          'PAYMENT_DECLINED' ||
+          'PAYMENT_CAPTURE_FAILED' =>
+            Icons.credit_card_off,
           'OUT_OF_STOCK' => Icons.remove_shopping_cart,
           'INVALID_DISCOUNT_CODE' => Icons.local_offer_outlined,
           _ => Icons.error_outline,
@@ -99,16 +106,28 @@ class _CartScreenState extends ConsumerState<CartScreen> {
     return AppScaffold(
       title: 'Cart',
       body: cart.lines.isEmpty
-          ? MessageView(
-              icon: Icons.shopping_cart_outlined,
-              title: 'Your cart is empty',
-              message: 'Browse the store to add merchandise.',
-              actionLabel: 'Open store',
-              onAction: () => context.go('/store'),
+          ? Column(
+              children: [
+                const Padding(
+                  padding: EdgeInsets.fromLTRB(
+                      AppSpacing.lg, AppSpacing.lg, AppSpacing.lg, 0),
+                  child: GuestCartBanner(),
+                ),
+                Expanded(
+                  child: MessageView(
+                    icon: Icons.shopping_cart_outlined,
+                    title: 'Your cart is empty',
+                    message: 'Browse the store to add merchandise.',
+                    actionLabel: 'Open store',
+                    onAction: () => context.go('/store'),
+                  ),
+                ),
+              ],
             )
           : ListView(
               padding: const EdgeInsets.all(AppSpacing.lg),
               children: [
+                const GuestCartBanner(),
                 for (final line in cart.lines) ...[
                   Card(
                     child: Padding(
@@ -119,13 +138,17 @@ class _CartScreenState extends ConsumerState<CartScreen> {
                           Row(
                             children: [
                               Expanded(
-                                child: Text('${line.product.name} — ${line.variant.label}',
-                                    style: Theme.of(context).textTheme.titleMedium),
+                                child: Text(
+                                    '${line.product.name} — ${line.variant.label}',
+                                    style: Theme.of(context)
+                                        .textTheme
+                                        .titleMedium),
                               ),
                               IconButton(
                                 tooltip: 'Remove ${line.variant.label}',
                                 icon: const Icon(Icons.delete_outline),
-                                onPressed: () => controller.remove(line.variant.variantId),
+                                onPressed: () =>
+                                    controller.remove(line.variant.variantId),
                               ),
                             ],
                           ),
@@ -134,27 +157,41 @@ class _CartScreenState extends ConsumerState<CartScreen> {
                               IconButton.outlined(
                                 tooltip: 'Decrease',
                                 onPressed: line.quantity > 1
-                                    ? () => controller.setQuantity(line.variant.variantId, line.quantity - 1)
+                                    ? () => controller.setQuantity(
+                                        line.variant.variantId,
+                                        line.quantity - 1)
                                     : null,
                                 icon: const Icon(Icons.remove),
                               ),
                               Padding(
-                                padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
-                                child: Text('${line.quantity}', style: Theme.of(context).textTheme.titleMedium),
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: AppSpacing.md),
+                                child: Text('${line.quantity}',
+                                    style: Theme.of(context)
+                                        .textTheme
+                                        .titleMedium),
                               ),
                               IconButton.outlined(
                                 tooltip: 'Increase',
-                                onPressed: line.quantity < line.variant.stock && line.quantity < CartController.maxQuantity
-                                    ? () => controller.setQuantity(line.variant.variantId, line.quantity + 1)
+                                onPressed: line.quantity < line.variant.stock &&
+                                        line.quantity <
+                                            CartController.maxQuantity
+                                    ? () => controller.setQuantity(
+                                        line.variant.variantId,
+                                        line.quantity + 1)
                                     : null,
                                 icon: const Icon(Icons.add),
                               ),
                               const Spacer(),
-                              Text(formatMoney(line.lineTotalMinor), style: const TextStyle(fontWeight: FontWeight.w700)),
+                              Text(formatMoney(line.lineTotalMinor),
+                                  style: const TextStyle(
+                                      fontWeight: FontWeight.w700)),
                             ],
                           ),
-                          Text('${formatMoney(line.variant.priceMinor)} each · ${line.variant.stock} in stock when loaded',
-                              style: const TextStyle(color: AppColors.textMuted, fontSize: 12)),
+                          Text(
+                              '${formatMoney(line.variant.priceMinor)} each · ${line.variant.stock} in stock when loaded',
+                              style: const TextStyle(
+                                  color: AppColors.textMuted, fontSize: 12)),
                         ],
                       ),
                     ),
@@ -187,16 +224,20 @@ class _CartScreenState extends ConsumerState<CartScreen> {
                     padding: const EdgeInsets.all(AppSpacing.lg),
                     child: Column(
                       children: [
-                        _SummaryRow('Subtotal (estimated)', formatMoney(cart.estimatedSubtotalMinor)),
+                        _SummaryRow('Subtotal (estimated)',
+                            formatMoney(cart.estimatedSubtotalMinor)),
                         const SizedBox(height: AppSpacing.xs),
                         _SummaryRow(
                           'Discount',
-                          _code.text.trim().isEmpty ? '—' : 'Applied by server at checkout',
+                          _code.text.trim().isEmpty
+                              ? '—'
+                              : 'Applied by server at checkout',
                         ),
                         const Divider(),
                         const Text(
                           'Final total, discount and stock are confirmed by the server when you pay.',
-                          style: TextStyle(color: AppColors.textMuted, fontSize: 12),
+                          style: TextStyle(
+                              color: AppColors.textMuted, fontSize: 12),
                         ),
                       ],
                     ),
@@ -218,7 +259,10 @@ class _CartScreenState extends ConsumerState<CartScreen> {
                           Icon(_errorIcon, color: AppColors.danger),
                           const SizedBox(width: AppSpacing.sm),
                           Expanded(
-                            child: Text(_error!, style: const TextStyle(color: AppColors.danger, fontWeight: FontWeight.w600)),
+                            child: Text(_error!,
+                                style: const TextStyle(
+                                    color: AppColors.danger,
+                                    fontWeight: FontWeight.w600)),
                           ),
                         ],
                       ),
@@ -229,12 +273,19 @@ class _CartScreenState extends ConsumerState<CartScreen> {
                 if (!online)
                   const Padding(
                     padding: EdgeInsets.only(bottom: AppSpacing.sm),
-                    child: LabelBadge(icon: Icons.cloud_off, text: 'Checkout needs a connection to the server', color: AppColors.warning),
+                    child: LabelBadge(
+                        icon: Icons.cloud_off,
+                        text: 'Checkout needs a connection to the server',
+                        color: AppColors.warning),
                   ),
                 FilledButton.icon(
                   onPressed: _busy || !online ? null : () => _checkout(cart),
                   icon: _busy
-                      ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                      ? const SizedBox(
+                          width: 18,
+                          height: 18,
+                          child: CircularProgressIndicator(
+                              strokeWidth: 2, color: Colors.white))
                       : const Icon(Icons.lock_outline),
                   label: Text(_busy ? 'Processing payment…' : 'Pay now'),
                 ),
@@ -253,7 +304,10 @@ class _SummaryRow extends StatelessWidget {
   Widget build(BuildContext context) => Row(
         children: [
           Expanded(child: Text(label)),
-          Flexible(child: Text(value, textAlign: TextAlign.end, style: const TextStyle(fontWeight: FontWeight.w700))),
+          Flexible(
+              child: Text(value,
+                  textAlign: TextAlign.end,
+                  style: const TextStyle(fontWeight: FontWeight.w700))),
         ],
       );
 }
@@ -261,7 +315,8 @@ class _SummaryRow extends StatelessWidget {
 /// Payment option list built from plain ListTiles so it works across Flutter
 /// versions (Radio's group API changed in 3.32).
 class RadioGroupCompat extends StatelessWidget {
-  const RadioGroupCompat({super.key, required this.value, required this.onChanged});
+  const RadioGroupCompat(
+      {super.key, required this.value, required this.onChanged});
   final PaymentToken value;
   final ValueChanged<PaymentToken> onChanged;
 
@@ -273,7 +328,9 @@ class RadioGroupCompat extends StatelessWidget {
           ListTile(
             contentPadding: EdgeInsets.zero,
             selected: t == value,
-            leading: Icon(t == value ? Icons.radio_button_checked : Icons.radio_button_unchecked),
+            leading: Icon(t == value
+                ? Icons.radio_button_checked
+                : Icons.radio_button_unchecked),
             title: Text(t.label),
             subtitle: Text(t.token),
             onTap: () => onChanged(t),

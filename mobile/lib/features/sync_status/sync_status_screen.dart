@@ -14,11 +14,13 @@ import '../../core/widgets/state_views.dart';
 import '../auth/auth_controller.dart';
 
 final _queueProvider = FutureProvider.autoDispose<List<PendingAction>>((ref) {
-  ref.watch(syncControllerProvider.select((s) => (s.pending, s.rejected, s.lastSyncAt)));
+  ref.watch(syncControllerProvider
+      .select((s) => (s.pending, s.rejected, s.lastSyncAt)));
   return ref.watch(actionQueueProvider).all();
 });
 
-final _historyProvider = FutureProvider.autoDispose<List<SyncHistoryEntry>>((ref) {
+final _historyProvider =
+    FutureProvider.autoDispose<List<SyncHistoryEntry>>((ref) {
   ref.watch(syncControllerProvider.select((s) => s.lastSyncAt));
   return ref.watch(actionQueueProvider).history();
 });
@@ -52,9 +54,17 @@ class SyncStatusScreen extends ConsumerWidget {
     final history = ref.watch(_historyProvider);
 
     final (IconData icon, String title, String detail) = !s.hasNetwork
-        ? (Icons.cloud_off, 'Offline', 'No network. Eligible actions are saved on this device.')
+        ? (
+            Icons.cloud_off,
+            'Offline',
+            'No network. Eligible actions are saved on this device.'
+          )
         : !s.serverReachable
-            ? (Icons.dns_outlined, 'Server unreachable', 'The network is up but the server is not answering. Check Settings.')
+            ? (
+                Icons.dns_outlined,
+                'Server unreachable',
+                'The network is up but the server is not answering. Check Settings.'
+              )
             : (Icons.cloud_done_outlined, 'Online', 'Connected to the server.');
 
     return AppScaffold(
@@ -82,8 +92,12 @@ class SyncStatusScreen extends ConsumerWidget {
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Text(title, style: Theme.of(context).textTheme.titleLarge),
-                              Text(detail, style: const TextStyle(color: AppColors.textMuted)),
+                              Text(title,
+                                  style:
+                                      Theme.of(context).textTheme.titleLarge),
+                              Text(detail,
+                                  style: const TextStyle(
+                                      color: AppColors.textMuted)),
                             ],
                           ),
                         ),
@@ -94,9 +108,15 @@ class SyncStatusScreen extends ConsumerWidget {
                       spacing: AppSpacing.sm,
                       runSpacing: AppSpacing.sm,
                       children: [
-                        LabelBadge(icon: Icons.schedule, text: '${s.pending} pending', color: AppColors.info),
+                        LabelBadge(
+                            icon: Icons.schedule,
+                            text: '${s.pending} pending',
+                            color: AppColors.info),
                         if (s.rejected > 0)
-                          LabelBadge(icon: Icons.error_outline, text: '${s.rejected} need attention', color: AppColors.danger),
+                          LabelBadge(
+                              icon: Icons.error_outline,
+                              text: '${s.rejected} need attention',
+                              color: AppColors.danger),
                         if (s.lastSyncAt != null)
                           LabelBadge(
                             icon: Icons.history,
@@ -107,7 +127,8 @@ class SyncStatusScreen extends ConsumerWidget {
                     ),
                     if (s.lastMessage != null) ...[
                       const SizedBox(height: AppSpacing.md),
-                      Text(s.lastMessage!, style: const TextStyle(fontWeight: FontWeight.w600)),
+                      Text(s.lastMessage!,
+                          style: const TextStyle(fontWeight: FontWeight.w600)),
                     ],
                     const SizedBox(height: AppSpacing.md),
                     FilledButton.icon(
@@ -115,12 +136,20 @@ class SyncStatusScreen extends ConsumerWidget {
                           ? null
                           : () async {
                               final report = await controller.syncNow();
-                              if (context.mounted && report != null && report.transportError != null) {
-                                showSnack(context, friendlyError(report.transportError!), error: true);
+                              if (context.mounted &&
+                                  report != null &&
+                                  report.transportError != null) {
+                                showSnack(context,
+                                    friendlyError(report.transportError!),
+                                    error: true);
                               }
                             },
                       icon: s.syncing
-                          ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                          ? const SizedBox(
+                              width: 18,
+                              height: 18,
+                              child: CircularProgressIndicator(
+                                  strokeWidth: 2, color: Colors.white))
                           : const Icon(Icons.sync),
                       label: Text(s.syncing ? 'Syncing…' : 'Sync now'),
                     ),
@@ -129,17 +158,25 @@ class SyncStatusScreen extends ConsumerWidget {
               ),
             ),
             const SizedBox(height: AppSpacing.lg),
-            Text('Queued on this device', style: Theme.of(context).textTheme.titleMedium),
+            Text('Queued on this device',
+                style: Theme.of(context).textTheme.titleMedium),
             const SizedBox(height: AppSpacing.sm),
             queue.when(
               loading: () => const LinearProgressIndicator(),
               error: (e, _) => Text(friendlyError(e)),
               data: (items) => items.isEmpty
-                  ? const Card(child: ListTile(leading: Icon(Icons.done_all), title: Text('Nothing waiting to sync.')))
+                  ? const Card(
+                      child: ListTile(
+                          leading: Icon(Icons.done_all),
+                          title: Text('Nothing waiting to sync.')))
                   : Column(
                       children: [
                         for (final a in items) ...[
-                          _QueuedTile(action: a, mine: a.owner == me, onRetry: controller.retry, onDiscard: controller.discard),
+                          _QueuedTile(
+                              action: a,
+                              mine: a.owner == me,
+                              onRetry: controller.retry,
+                              onDiscard: controller.discard),
                           const SizedBox(height: AppSpacing.sm),
                         ],
                       ],
@@ -148,7 +185,9 @@ class SyncStatusScreen extends ConsumerWidget {
             const SizedBox(height: AppSpacing.lg),
             Row(
               children: [
-                Expanded(child: Text('Recent results', style: Theme.of(context).textTheme.titleMedium)),
+                Expanded(
+                    child: Text('Recent results',
+                        style: Theme.of(context).textTheme.titleMedium)),
                 TextButton(
                   onPressed: () async {
                     await ref.read(actionQueueProvider).clearHistory();
@@ -162,7 +201,8 @@ class SyncStatusScreen extends ConsumerWidget {
               loading: () => const LinearProgressIndicator(),
               error: (e, _) => Text(friendlyError(e)),
               data: (items) => items.isEmpty
-                  ? const EmptyView(title: 'No sync results yet', icon: Icons.history)
+                  ? const EmptyView(
+                      title: 'No sync results yet', icon: Icons.history)
                   : Column(
                       children: [
                         for (final e in items)
@@ -174,10 +214,13 @@ class SyncStatusScreen extends ConsumerWidget {
                                   'duplicate' => Icons.copy_all,
                                   _ => Icons.cancel,
                                 },
-                                color: e.status == 'rejected' ? AppColors.danger : AppColors.success,
+                                color: e.status == 'rejected'
+                                    ? AppColors.danger
+                                    : AppColors.success,
                               ),
                               title: Text(e.label),
-                              subtitle: Text('${explainResolution(e)}\n${formatDateTime(e.syncedAt)}'),
+                              subtitle: Text(
+                                  '${explainResolution(e)}\n${formatDateTime(e.syncedAt)}'),
                               isThreeLine: true,
                             ),
                           ),
@@ -192,7 +235,11 @@ class SyncStatusScreen extends ConsumerWidget {
 }
 
 class _QueuedTile extends StatelessWidget {
-  const _QueuedTile({required this.action, required this.mine, required this.onRetry, required this.onDiscard});
+  const _QueuedTile(
+      {required this.action,
+      required this.mine,
+      required this.onRetry,
+      required this.onDiscard});
 
   final PendingAction action;
   final bool mine;
@@ -202,8 +249,11 @@ class _QueuedTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final rejected = action.state == PendingState.rejected;
-    final kind = action.type == PendingAction.scoreEvent ? 'Score event' : 'Roster move';
-    final target = action.type == PendingAction.scoreEvent ? 'Match ${action.target}' : 'Player ${action.target}';
+    final kind =
+        action.type == PendingAction.scoreEvent ? 'Score event' : 'Roster move';
+    final target = action.type == PendingAction.scoreEvent
+        ? 'Match ${action.target}'
+        : 'Player ${action.target}';
 
     return Card(
       child: Padding(
@@ -213,20 +263,33 @@ class _QueuedTile extends StatelessWidget {
           children: [
             Row(
               children: [
-                Icon(action.type == PendingAction.scoreEvent ? Icons.scoreboard_outlined : Icons.swap_horiz),
+                Icon(action.type == PendingAction.scoreEvent
+                    ? Icons.scoreboard_outlined
+                    : Icons.swap_horiz),
                 const SizedBox(width: AppSpacing.sm),
-                Expanded(child: Text(action.label, style: const TextStyle(fontWeight: FontWeight.w700))),
+                Expanded(
+                    child: Text(action.label,
+                        style: const TextStyle(fontWeight: FontWeight.w700))),
                 rejected
-                    ? const LabelBadge(icon: Icons.error_outline, text: 'Rejected', color: AppColors.danger)
-                    : const LabelBadge(icon: Icons.schedule, text: 'Pending', color: AppColors.warning),
+                    ? const LabelBadge(
+                        icon: Icons.error_outline,
+                        text: 'Rejected',
+                        color: AppColors.danger)
+                    : const LabelBadge(
+                        icon: Icons.schedule,
+                        text: 'Pending',
+                        color: AppColors.warning),
               ],
             ),
             const SizedBox(height: AppSpacing.xs),
-            Text('$kind · $target · queued ${formatDateTime(action.queuedAt)}'
+            Text(
+                '$kind · $target · queued ${formatDateTime(action.queuedAt)}'
                 '${action.baseVersion != null ? ' · based on v${action.baseVersion}' : ''}',
-                style: const TextStyle(color: AppColors.textMuted, fontSize: 12)),
+                style:
+                    const TextStyle(color: AppColors.textMuted, fontSize: 12)),
             if (!mine)
-              const Text('Queued by another account — sign in as that user to send it.',
+              const Text(
+                  'Queued by another account — sign in as that user to send it.',
                   style: TextStyle(color: AppColors.textMuted, fontSize: 12)),
             if (action.lastError != null) ...[
               const SizedBox(height: AppSpacing.xs),
@@ -234,9 +297,13 @@ class _QueuedTile extends StatelessWidget {
                 rejected
                     ? describeErrorCode(action.lastError)
                     : 'Last attempt failed: ${describeErrorCode(action.lastError)} It will be retried.',
-                style: TextStyle(color: rejected ? AppColors.danger : AppColors.warning, fontWeight: FontWeight.w600),
+                style: TextStyle(
+                    color: rejected ? AppColors.danger : AppColors.warning,
+                    fontWeight: FontWeight.w600),
               ),
-              Text('Code: ${action.lastError}', style: const TextStyle(color: AppColors.textMuted, fontSize: 11)),
+              Text('Code: ${action.lastError}',
+                  style: const TextStyle(
+                      color: AppColors.textMuted, fontSize: 11)),
             ],
             if (rejected && mine)
               Row(
@@ -247,7 +314,8 @@ class _QueuedTile extends StatelessWidget {
                       final ok = await confirmAction(
                         context,
                         title: 'Discard action?',
-                        message: 'The server rejected "${action.label}". Discarding removes it from this device.',
+                        message:
+                            'The server rejected "${action.label}". Discarding removes it from this device.',
                         confirmLabel: 'Discard',
                         destructive: true,
                       );
@@ -255,7 +323,9 @@ class _QueuedTile extends StatelessWidget {
                     },
                     child: const Text('Discard'),
                   ),
-                  FilledButton.tonal(onPressed: () => onRetry(action.actionId), child: const Text('Retry')),
+                  FilledButton.tonal(
+                      onPressed: () => onRetry(action.actionId),
+                      child: const Text('Retry')),
                 ],
               ),
           ],

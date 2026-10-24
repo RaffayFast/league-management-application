@@ -8,6 +8,7 @@ import '../../core/network/error_messages.dart';
 import '../../core/providers.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/util/validators.dart';
+import '../cart/controllers/guest_cart_controller.dart';
 import 'auth_controller.dart';
 
 class LoginScreen extends ConsumerStatefulWidget {
@@ -40,7 +41,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       _error = null;
     });
     try {
-      await ref.read(authControllerProvider.notifier).login(_email.text, _password.text);
+      await ref
+          .read(authControllerProvider.notifier)
+          .login(_email.text, _password.text);
       // Router redirect moves to /home.
     } on ApiException catch (e) {
       setState(() => _error = e.code == 'UNAUTHENTICATED'
@@ -89,10 +92,13 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.stretch,
                             children: [
-                              Text('Sign in', style: theme.textTheme.titleLarge),
+                              Text('Sign in',
+                                  style: theme.textTheme.titleLarge),
                               const SizedBox(height: AppSpacing.lg),
-                              if (message != null && _error == null) _Notice(text: message, error: false),
-                              if (_error != null) _Notice(text: _error!, error: true),
+                              if (message != null && _error == null)
+                                _Notice(text: message, error: false),
+                              if (_error != null)
+                                _Notice(text: _error!, error: true),
                               TextFormField(
                                 controller: _email,
                                 keyboardType: TextInputType.emailAddress,
@@ -115,9 +121,14 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                                   labelText: 'Password',
                                   prefixIcon: const Icon(Icons.lock_outline),
                                   suffixIcon: IconButton(
-                                    tooltip: _obscure ? 'Show password' : 'Hide password',
-                                    icon: Icon(_obscure ? Icons.visibility : Icons.visibility_off),
-                                    onPressed: () => setState(() => _obscure = !_obscure),
+                                    tooltip: _obscure
+                                        ? 'Show password'
+                                        : 'Hide password',
+                                    icon: Icon(_obscure
+                                        ? Icons.visibility
+                                        : Icons.visibility_off),
+                                    onPressed: () =>
+                                        setState(() => _obscure = !_obscure),
                                   ),
                                 ),
                                 validator: validatePassword,
@@ -129,7 +140,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                                     ? const SizedBox(
                                         height: 22,
                                         width: 22,
-                                        child: CircularProgressIndicator(strokeWidth: 2.5, color: Colors.white),
+                                        child: CircularProgressIndicator(
+                                            strokeWidth: 2.5,
+                                            color: Colors.white),
                                       )
                                     : const Text('Sign in'),
                               ),
@@ -140,13 +153,17 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     ),
                   ),
                   const SizedBox(height: AppSpacing.lg),
+                  const _GuestEntry(),
+                  const SizedBox(height: AppSpacing.lg),
                   _DemoAccounts(onPick: _fillDemo),
                   const SizedBox(height: AppSpacing.md),
                   TextButton.icon(
-                    style: TextButton.styleFrom(foregroundColor: Colors.white70),
+                    style:
+                        TextButton.styleFrom(foregroundColor: Colors.white70),
                     onPressed: () => context.push('/settings'),
                     icon: const Icon(Icons.dns_outlined, size: 18),
-                    label: Text('Server: $baseUrl', overflow: TextOverflow.ellipsis),
+                    label: Text('Server: $baseUrl',
+                        overflow: TextOverflow.ellipsis),
                   ),
                 ],
               ),
@@ -154,6 +171,52 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
           ),
         ),
       ),
+    );
+  }
+}
+
+/// Watching, scanning and staging merchandise need no account.
+class _GuestEntry extends ConsumerWidget {
+  const _GuestEntry();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final count =
+        ref.watch(guestCartControllerProvider.select((s) => s.itemCount));
+    final style = OutlinedButton.styleFrom(
+      foregroundColor: Colors.white,
+      side: const BorderSide(color: Colors.white38),
+      minimumSize: const Size(48, 48),
+    );
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        const Text('No account needed to watch',
+            textAlign: TextAlign.center,
+            style: TextStyle(color: Colors.white70)),
+        const SizedBox(height: AppSpacing.sm),
+        Row(
+          children: [
+            Expanded(
+              child: OutlinedButton.icon(
+                style: style,
+                onPressed: () => context.push('/scan'),
+                icon: const Icon(Icons.qr_code_scanner),
+                label: const Text('Scan QR'),
+              ),
+            ),
+            const SizedBox(width: AppSpacing.sm),
+            Expanded(
+              child: OutlinedButton.icon(
+                style: style,
+                onPressed: () => context.push('/guest-cart'),
+                icon: const Icon(Icons.shopping_bag_outlined),
+                label: Text(count == 0 ? 'Guest cart' : 'Guest cart ($count)'),
+              ),
+            ),
+          ],
+        ),
+      ],
     );
   }
 }
@@ -168,15 +231,22 @@ class _Brand extends StatelessWidget {
         Container(
           width: 72,
           height: 72,
-          decoration: BoxDecoration(color: AppColors.lime, borderRadius: BorderRadius.circular(20)),
-          child: const Icon(Icons.sports_soccer, size: 40, color: AppColors.navy, semanticLabel: 'LeagueHub logo'),
+          decoration: BoxDecoration(
+              color: AppColors.lime, borderRadius: BorderRadius.circular(20)),
+          child: const Icon(Icons.sports_soccer,
+              size: 40, color: AppColors.navy, semanticLabel: 'LeagueHub logo'),
         ),
         const SizedBox(height: AppSpacing.md),
         Text(
           AppConfig.appName,
-          style: Theme.of(context).textTheme.headlineMedium?.copyWith(color: Colors.white, fontWeight: FontWeight.w800),
+          style: Theme.of(context)
+              .textTheme
+              .headlineMedium
+              ?.copyWith(color: Colors.white, fontWeight: FontWeight.w800),
         ),
-        const Text("powered by NaSCon '26", style: TextStyle(color: AppColors.lime, fontWeight: FontWeight.w600)),
+        const Text("powered by NaSCon '26",
+            style:
+                TextStyle(color: AppColors.lime, fontWeight: FontWeight.w600)),
       ],
     );
   }
@@ -196,12 +266,18 @@ class _Notice extends StatelessWidget {
         liveRegion: true,
         child: Container(
           padding: const EdgeInsets.all(AppSpacing.md),
-          decoration: BoxDecoration(color: color.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(10)),
+          decoration: BoxDecoration(
+              color: color.withValues(alpha: 0.1),
+              borderRadius: BorderRadius.circular(10)),
           child: Row(
             children: [
-              Icon(error ? Icons.error_outline : Icons.info_outline, color: color),
+              Icon(error ? Icons.error_outline : Icons.info_outline,
+                  color: color),
               const SizedBox(width: AppSpacing.sm),
-              Expanded(child: Text(text, style: TextStyle(color: color, fontWeight: FontWeight.w600))),
+              Expanded(
+                  child: Text(text,
+                      style: TextStyle(
+                          color: color, fontWeight: FontWeight.w600))),
             ],
           ),
         ),
@@ -221,8 +297,10 @@ class _DemoAccounts extends StatelessWidget {
       child: ExpansionTile(
         collapsedIconColor: Colors.white,
         iconColor: AppColors.lime,
-        title: const Text('Demo accounts', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600)),
-        subtitle: const Text('Tap one to fill in the form', style: TextStyle(color: Colors.white70)),
+        title: const Text('Demo accounts',
+            style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600)),
+        subtitle: const Text('Tap one to fill in the form',
+            style: TextStyle(color: Colors.white70)),
         children: [
           Wrap(
             spacing: AppSpacing.sm,

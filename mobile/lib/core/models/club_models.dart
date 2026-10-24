@@ -6,8 +6,10 @@ class Venue {
   final double? lat;
   final double? lng;
 
-  factory Venue.fromJson(Json j) =>
-      Venue(name: asString(j['name']), lat: asDoubleOrNull(j['lat']), lng: asDoubleOrNull(j['lng']));
+  factory Venue.fromJson(Json j) => Venue(
+      name: asString(j['name']),
+      lat: asDoubleOrNull(j['lat']),
+      lng: asDoubleOrNull(j['lng']));
 }
 
 class StaffMember {
@@ -15,11 +17,17 @@ class StaffMember {
   final String name;
   final String role;
 
-  factory StaffMember.fromJson(Json j) => StaffMember(name: asString(j['name']), role: asString(j['role']));
+  factory StaffMember.fromJson(Json j) =>
+      StaffMember(name: asString(j['name']), role: asString(j['role']));
 }
 
 class SeasonStat {
-  const SeasonStat({required this.season, required this.played, required this.won, required this.drawn, required this.lost});
+  const SeasonStat(
+      {required this.season,
+      required this.played,
+      required this.won,
+      required this.drawn,
+      required this.lost});
   final String season;
   final int played, won, drawn, lost;
 
@@ -87,7 +95,9 @@ class Club {
         clubId: asString(j['club_id']),
         tenantId: asString(j['tenant_id']),
         name: asString(j['name'], asString(j['club_id'])),
-        homeVenue: j['home_venue'] is Map ? Venue.fromJson(asMap(j['home_venue'])) : null,
+        homeVenue: j['home_venue'] is Map
+            ? Venue.fromJson(asMap(j['home_venue']))
+            : null,
         social: asMap(j['social']).map((k, v) => MapEntry(k, asString(v))),
         staff: mapList(j['staff'], StaffMember.fromJson),
         roster: mapList(j['roster'], ClubRosterEntry.fromJson),
@@ -122,7 +132,11 @@ class SquadPlayer {
 }
 
 class Squad {
-  const Squad({required this.squadId, required this.clubId, required this.name, required this.players});
+  const Squad(
+      {required this.squadId,
+      required this.clubId,
+      required this.name,
+      required this.players});
 
   final String squadId;
   final String clubId;
@@ -142,9 +156,11 @@ class TransferWindow {
   final String open; // YYYY-MM-DD
   final String close;
 
-  bool contains(String date) => open.compareTo(date) <= 0 && date.compareTo(close) <= 0;
+  bool contains(String date) =>
+      open.compareTo(date) <= 0 && date.compareTo(close) <= 0;
 
-  factory TransferWindow.fromJson(Json j) => TransferWindow(open: asString(j['open']), close: asString(j['close']));
+  factory TransferWindow.fromJson(Json j) =>
+      TransferWindow(open: asString(j['open']), close: asString(j['close']));
 }
 
 /// B7 league roster.
@@ -177,7 +193,8 @@ class RosterResponse {
         sportId: asString(j['sport_id']),
         transferWindow: TransferWindow.fromJson(asMap(j['transfer_window'])),
         maxSquadSize: asInt(j['max_squad_size']),
-        requiredPositions: asMap(j['required_positions']).map((k, v) => MapEntry(k, asInt(v))),
+        requiredPositions:
+            asMap(j['required_positions']).map((k, v) => MapEntry(k, asInt(v))),
         squads: mapList(j['squads'], Squad.fromJson),
       );
 }
@@ -324,8 +341,12 @@ class TransferResponse {
         status: asString(j['status']),
         state: asString(j['state']),
         blockingMatchId: asStringOrNull(j['blocking_match_id']),
-        registration: j['registration'] is Map ? Registration.fromJson(asMap(j['registration'])) : null,
-        auditEntry: j['audit_entry'] is Map ? AuditEntry.fromJson(asMap(j['audit_entry'])) : null,
+        registration: j['registration'] is Map
+            ? Registration.fromJson(asMap(j['registration']))
+            : null,
+        auditEntry: j['audit_entry'] is Map
+            ? AuditEntry.fromJson(asMap(j['audit_entry']))
+            : null,
       );
 }
 

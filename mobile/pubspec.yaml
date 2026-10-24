@@ -22,12 +22,27 @@ dependencies:
   path_provider: ^2.1.5
   sqflite: ^2.4.1
   uuid: ^4.5.1
+  # HLS playback on Android (ExoPlayer) with chewie controls.
+  video_player: ^2.14.1
+  chewie: ^1.13.1
+  # QR camera scanning (Android; Windows uses the paste-a-link fallback).
+  # Pinned: 7.2.1+ pulls CameraX 1.6.x, which needs Android Gradle Plugin 8.9.1, and this
+  # project's Gradle files use AGP 8.7.3. 7.2.0 uses CameraX 1.5.3 (needs AGP 8.6.0).
+  mobile_scanner: 7.2.0
+  # Co-stream layouts (solo, grid_2, grid_4, spotlight).
+  flutter_layout_grid: ^2.0.8
+  # HLS playback on Windows: video_player has no Windows implementation, libmpv does.
+  media_kit: ^1.2.6
+  media_kit_video: ^2.0.1
+  media_kit_libs_windows_video: ^1.0.11
+  # SSE (chat stream) runs on the existing Dio client in lib/core/network/sse.dart.
+  # flutter_client_sse 2.0.3 was evaluated and left out: one static http.Client for all
+  # subscriptions, unsubscribe triggers its 5 s auto-reconnect, and no HTTP status check.
+  sqflite_common_ffi: ^2.4.5
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
   flutter_lints: ^4.0.0
-  sqflite_common_ffi: ^2.3.4
-
 flutter:
   uses-material-design: true

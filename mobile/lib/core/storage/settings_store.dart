@@ -11,7 +11,8 @@ class SettingsStore {
   static const _baseUrlKey = 'base_url';
   static const _deviceIdKey = 'device_id';
 
-  Future<String> baseUrl() async => await _db.getValue(_baseUrlKey) ?? AppConfig.defaultBaseUrl;
+  Future<String> baseUrl() async =>
+      await _db.getValue(_baseUrlKey) ?? AppConfig.defaultBaseUrl;
 
   Future<void> setBaseUrl(String url) => _db.setValue(_baseUrlKey, url);
 

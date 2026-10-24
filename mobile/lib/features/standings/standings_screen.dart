@@ -33,7 +33,8 @@ class _StandingsScreenState extends ConsumerState<StandingsScreen> {
   @override
   void didUpdateWidget(covariant StandingsScreen oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (widget.initialLeagueId != null && widget.initialLeagueId != oldWidget.initialLeagueId) {
+    if (widget.initialLeagueId != null &&
+        widget.initialLeagueId != oldWidget.initialLeagueId) {
       setState(() => _leagueId = widget.initialLeagueId);
     }
   }
@@ -48,15 +49,19 @@ class _StandingsScreenState extends ConsumerState<StandingsScreen> {
         onRetry: () => ref.invalidate(leaguesProvider),
         data: (leagues) {
           if (leagues.data.isEmpty) {
-            return const EmptyView(title: 'No leagues yet', icon: Icons.leaderboard_outlined);
+            return const EmptyView(
+                title: 'No leagues yet', icon: Icons.leaderboard_outlined);
           }
           final ids = leagues.data.map((l) => l.leagueId).toSet();
-          final leagueId = _leagueId != null && ids.contains(_leagueId) ? _leagueId! : leagues.data.first.leagueId;
+          final leagueId = _leagueId != null && ids.contains(_leagueId)
+              ? _leagueId!
+              : leagues.data.first.leagueId;
           final league = leagues.data.firstWhere((l) => l.leagueId == leagueId);
           return Column(
             children: [
               Padding(
-                padding: const EdgeInsets.fromLTRB(AppSpacing.lg, AppSpacing.lg, AppSpacing.lg, 0),
+                padding: const EdgeInsets.fromLTRB(
+                    AppSpacing.lg, AppSpacing.lg, AppSpacing.lg, 0),
                 child: LeaguePicker(
                   leagues: leagues.data,
                   selectedLeagueId: leagueId,
@@ -86,10 +91,19 @@ class _StandingsBody extends ConsumerWidget {
         final s = res.data;
         // Team ids are club ids for app leagues; map to names via cached fixtures when known.
         final names = <String, String>{};
-        final fixtures = ref.watch(fixturesProvider(league.leagueId)).valueOrNull?.data.fixtures ?? const [];
+        final fixtures = ref
+                .watch(fixturesProvider(league.leagueId))
+                .valueOrNull
+                ?.data
+                .fixtures ??
+            const [];
         for (final f in fixtures) {
-          if (f.homeTeamId != null && f.homeName != null) names[f.homeTeamId!] = f.homeName!;
-          if (f.awayTeamId != null && f.awayName != null) names[f.awayTeamId!] = f.awayName!;
+          if (f.homeTeamId != null && f.homeName != null) {
+            names[f.homeTeamId!] = f.homeName!;
+          }
+          if (f.awayTeamId != null && f.awayName != null) {
+            names[f.awayTeamId!] = f.awayName!;
+          }
         }
 
         return RefreshIndicator(
@@ -103,7 +117,10 @@ class _StandingsBody extends ConsumerWidget {
             physics: const AlwaysScrollableScrollPhysics(),
             padding: const EdgeInsets.all(AppSpacing.lg),
             children: [
-              if (res.fromCache) ...[CachedBanner(cachedAt: res.cachedAt), const SizedBox(height: AppSpacing.md)],
+              if (res.fromCache) ...[
+                CachedBanner(cachedAt: res.cachedAt),
+                const SizedBox(height: AppSpacing.md)
+              ],
               Text(league.name, style: Theme.of(context).textTheme.titleLarge),
               const SizedBox(height: AppSpacing.xs),
               Text(
@@ -112,15 +129,25 @@ class _StandingsBody extends ConsumerWidget {
               ),
               const SizedBox(height: AppSpacing.md),
               if (s.table.isEmpty)
-                const SizedBox(height: 280, child: EmptyView(title: 'No standings yet', message: 'Standings appear once teams are registered.'))
+                const SizedBox(
+                    height: 280,
+                    child: EmptyView(
+                        title: 'No standings yet',
+                        message: 'Standings appear once teams are registered.'))
               else
                 LayoutBuilder(
                   builder: (context, c) => c.maxWidth >= 600
-                      ? _WideTable(rows: s.table, names: names, spots: s.qualificationSpots)
+                      ? _WideTable(
+                          rows: s.table,
+                          names: names,
+                          spots: s.qualificationSpots)
                       : Column(
                           children: [
                             for (final r in s.table) ...[
-                              _RowCard(row: r, name: names[r.teamId] ?? r.teamId, qualifies: r.rank <= s.qualificationSpots),
+                              _RowCard(
+                                  row: r,
+                                  name: names[r.teamId] ?? r.teamId,
+                                  qualifies: r.rank <= s.qualificationSpots),
                               const SizedBox(height: AppSpacing.sm),
                             ],
                           ],
@@ -137,7 +164,8 @@ class _StandingsBody extends ConsumerWidget {
 }
 
 class _RowCard extends StatelessWidget {
-  const _RowCard({required this.row, required this.name, required this.qualifies});
+  const _RowCard(
+      {required this.row, required this.name, required this.qualifies});
   final StandingRow row;
   final String name;
   final bool qualifies;
@@ -147,19 +175,26 @@ class _RowCard extends StatelessWidget {
     final theme = Theme.of(context);
     Widget stat(String label, Object value) => Column(
           children: [
-            Text('$value', style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700)),
-            Text(label, style: theme.textTheme.labelSmall?.copyWith(color: AppColors.textMuted)),
+            Text('$value',
+                style: theme.textTheme.titleSmall
+                    ?.copyWith(fontWeight: FontWeight.w700)),
+            Text(label,
+                style: theme.textTheme.labelSmall
+                    ?.copyWith(color: AppColors.textMuted)),
           ],
         );
 
     return Semantics(
-      label: 'Rank ${row.rank}, $name, ${row.points} points, played ${row.played}, '
+      label:
+          'Rank ${row.rank}, $name, ${row.points} points, played ${row.played}, '
           'won ${row.won}, drawn ${row.drawn}, lost ${row.lost}, goal difference ${row.diff}. '
           '${row.statusRaw.replaceAll('_', ' ')}.',
       child: Card(
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(AppSpacing.radius),
-          side: BorderSide(color: qualifies ? AppColors.limeDeep : AppColors.border, width: qualifies ? 1.5 : 1),
+          side: BorderSide(
+              color: qualifies ? AppColors.limeDeep : AppColors.border,
+              width: qualifies ? 1.5 : 1),
         ),
         child: InkWell(
           borderRadius: BorderRadius.circular(AppSpacing.radius),
@@ -173,12 +208,19 @@ class _RowCard extends StatelessWidget {
                     children: [
                       SizedBox(
                         width: 32,
-                        child: Text('${row.rank}', style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800)),
+                        child: Text('${row.rank}',
+                            style: theme.textTheme.titleLarge
+                                ?.copyWith(fontWeight: FontWeight.w800)),
                       ),
                       TeamAvatar(name: name, size: 32),
                       const SizedBox(width: AppSpacing.sm),
-                      Expanded(child: Text(name, style: theme.textTheme.titleMedium, overflow: TextOverflow.ellipsis)),
-                      Text('${row.points} pts', style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800)),
+                      Expanded(
+                          child: Text(name,
+                              style: theme.textTheme.titleMedium,
+                              overflow: TextOverflow.ellipsis)),
+                      Text('${row.points} pts',
+                          style: theme.textTheme.titleMedium
+                              ?.copyWith(fontWeight: FontWeight.w800)),
                     ],
                   ),
                   const SizedBox(height: AppSpacing.sm),
@@ -204,7 +246,8 @@ class _RowCard extends StatelessWidget {
                         Flexible(
                           child: Text(
                             'Tie broken by ${humanize(row.resolvedBy!)}',
-                            style: theme.textTheme.bodySmall?.copyWith(color: AppColors.textMuted),
+                            style: theme.textTheme.bodySmall
+                                ?.copyWith(color: AppColors.textMuted),
                             overflow: TextOverflow.ellipsis,
                           ),
                         ),
@@ -222,7 +265,8 @@ class _RowCard extends StatelessWidget {
 }
 
 class _WideTable extends StatelessWidget {
-  const _WideTable({required this.rows, required this.names, required this.spots});
+  const _WideTable(
+      {required this.rows, required this.names, required this.spots});
   final List<StandingRow> rows;
   final Map<String, String> names;
   final int spots;
@@ -251,7 +295,8 @@ class _WideTable extends StatelessWidget {
           rows: [
             for (final r in rows)
               DataRow(
-                onSelectChanged: (_) => context.push('/club/${Uri.encodeComponent(r.teamId)}'),
+                onSelectChanged: (_) =>
+                    context.push('/club/${Uri.encodeComponent(r.teamId)}'),
                 cells: [
                   DataCell(Text('${r.rank}${r.rank <= spots ? ' ✓' : ''}')),
                   DataCell(Text(names[r.teamId] ?? r.teamId)),
@@ -263,7 +308,8 @@ class _WideTable extends StatelessWidget {
                   DataCell(Text('${r.conceded}')),
                   DataCell(Text(r.diff > 0 ? '+${r.diff}' : '${r.diff}')),
                   DataCell(Text('${r.fairPlay}')),
-                  DataCell(Text('${r.points}', style: const TextStyle(fontWeight: FontWeight.w800))),
+                  DataCell(Text('${r.points}',
+                      style: const TextStyle(fontWeight: FontWeight.w800))),
                   DataCell(QualificationBadge(status: r.status)),
                 ],
               ),

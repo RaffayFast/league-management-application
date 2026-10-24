@@ -113,7 +113,9 @@ class PendingAction {
         payload: asMap(jsonDecode(row['payload'] as String)),
         label: row['label'] as String,
         target: row['target'] as String,
-        state: (row['state'] as String) == 'rejected' ? PendingState.rejected : PendingState.pending,
+        state: (row['state'] as String) == 'rejected'
+            ? PendingState.rejected
+            : PendingState.pending,
         lastError: row['last_error'] as String?,
         attempts: (row['attempts'] as int?) ?? 0,
         owner: row['owner'] as String,
@@ -153,7 +155,8 @@ class SyncHistoryEntry {
         'synced_at': syncedAt,
       };
 
-  factory SyncHistoryEntry.fromRow(Map<String, Object?> row) => SyncHistoryEntry(
+  factory SyncHistoryEntry.fromRow(Map<String, Object?> row) =>
+      SyncHistoryEntry(
         actionId: row['action_id'] as String,
         type: row['type'] as String,
         label: row['label'] as String,

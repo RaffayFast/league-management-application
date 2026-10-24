@@ -2,7 +2,11 @@ import 'json.dart';
 
 /// B2 league summary.
 class League {
-  const League({required this.leagueId, required this.name, required this.sportId, this.tenantId});
+  const League(
+      {required this.leagueId,
+      required this.name,
+      required this.sportId,
+      this.tenantId});
 
   final String leagueId;
   final String name;
@@ -19,7 +23,15 @@ class League {
 
 /// Match status values from the Score object (A7). Unknown values from a future
 /// backend (postponed, abandoned, cancelled) are preserved and shown verbatim.
-enum MatchStatus { upcoming, inProgress, completed, postponed, abandoned, cancelled, other }
+enum MatchStatus {
+  upcoming,
+  inProgress,
+  completed,
+  postponed,
+  abandoned,
+  cancelled,
+  other
+}
 
 MatchStatus parseMatchStatus(String raw) => switch (raw) {
       'upcoming' || 'scheduled' => MatchStatus.upcoming,
@@ -92,7 +104,9 @@ class FixturesResponse {
 
   factory FixturesResponse.fromJson(Json j) {
     final id = asString(j['league_id']);
-    return FixturesResponse(leagueId: id, fixtures: mapList(j['fixtures'], (f) => Fixture.fromJson(f, id)));
+    return FixturesResponse(
+        leagueId: id,
+        fixtures: mapList(j['fixtures'], (f) => Fixture.fromJson(f, id)));
   }
 }
 
@@ -149,7 +163,11 @@ class StandingRow {
 }
 
 class H2hEntry {
-  const H2hEntry({required this.played, required this.points, required this.scored, required this.conceded});
+  const H2hEntry(
+      {required this.played,
+      required this.points,
+      required this.scored,
+      required this.conceded});
   final int played, points, scored, conceded;
 
   factory H2hEntry.fromJson(Json j) => H2hEntry(
@@ -179,7 +197,8 @@ class StandingsResponse {
   factory StandingsResponse.fromJson(Json j) {
     final h2h = <String, Map<String, H2hEntry>>{};
     asMap(j['h2h']).forEach((team, opps) {
-      h2h[team] = asMap(opps).map((opp, e) => MapEntry(opp, H2hEntry.fromJson(asMap(e))));
+      h2h[team] = asMap(opps)
+          .map((opp, e) => MapEntry(opp, H2hEntry.fromJson(asMap(e))));
     });
     return StandingsResponse(
       leagueId: asString(j['league_id']),

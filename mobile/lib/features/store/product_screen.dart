@@ -33,35 +33,62 @@ class _ProductScreenState extends ConsumerState<ProductScreen> {
         value: async,
         onRetry: () => ref.invalidate(productsProvider),
         data: (cached) {
-          final product = cached.data.where((p) => p.productId == widget.productId).firstOrNull;
+          final product = cached.data
+              .where((p) => p.productId == widget.productId)
+              .firstOrNull;
           if (product == null) {
-            return const EmptyView(title: 'Product not found', message: 'It may no longer be available.');
+            return const EmptyView(
+                title: 'Product not found',
+                message: 'It may no longer be available.');
           }
-          final variant = product.variants.where((v) => v.variantId == _variantId).firstOrNull ??
+          final variant = product.variants
+                  .where((v) => v.variantId == _variantId)
+                  .firstOrNull ??
               product.variants.where((v) => v.inStock).firstOrNull ??
               product.variants.firstOrNull;
-          final inCart = ref.watch(cartProvider).lines.where((l) => l.variant.variantId == variant?.variantId).firstOrNull?.quantity ?? 0;
+          final inCart = ref
+                  .watch(cartProvider)
+                  .lines
+                  .where((l) => l.variant.variantId == variant?.variantId)
+                  .firstOrNull
+                  ?.quantity ??
+              0;
           final available = (variant?.stock ?? 0) - inCart;
           final qty = clampQuantity(_qty, available);
 
           return ListView(
             padding: const EdgeInsets.all(AppSpacing.lg),
             children: [
-              if (cached.fromCache) ...[CachedBanner(cachedAt: cached.cachedAt), const SizedBox(height: AppSpacing.md)],
+              if (cached.fromCache) ...[
+                CachedBanner(cachedAt: cached.cachedAt),
+                const SizedBox(height: AppSpacing.md)
+              ],
               Container(
                 height: 180,
-                decoration: BoxDecoration(color: const Color(0xFFEFF2F7), borderRadius: BorderRadius.circular(AppSpacing.radius)),
-                child: const Center(child: Icon(Icons.checkroom, size: 96, color: AppColors.navySoft, semanticLabel: 'No product image')),
+                decoration: BoxDecoration(
+                    color: const Color(0xFFEFF2F7),
+                    borderRadius: BorderRadius.circular(AppSpacing.radius)),
+                child: const Center(
+                    child: Icon(Icons.checkroom,
+                        size: 96,
+                        color: AppColors.navySoft,
+                        semanticLabel: 'No product image')),
               ),
               const SizedBox(height: AppSpacing.lg),
-              Text(product.name, style: Theme.of(context).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w800)),
+              Text(product.name,
+                  style: Theme.of(context)
+                      .textTheme
+                      .headlineSmall
+                      ?.copyWith(fontWeight: FontWeight.w800)),
               const SizedBox(height: AppSpacing.xs),
-              Text('${humanize(product.category)}${product.clubId != null ? ' · ${product.clubId}' : ''}',
+              Text(
+                  '${humanize(product.category)}${product.clubId != null ? ' · ${product.clubId}' : ''}',
                   style: const TextStyle(color: AppColors.textMuted)),
               const SizedBox(height: AppSpacing.md),
               Text(product.description),
               const SizedBox(height: AppSpacing.lg),
-              Text('Choose an option', style: Theme.of(context).textTheme.titleMedium),
+              Text('Choose an option',
+                  style: Theme.of(context).textTheme.titleMedium),
               const SizedBox(height: AppSpacing.sm),
               Wrap(
                 spacing: AppSpacing.sm,
@@ -69,12 +96,15 @@ class _ProductScreenState extends ConsumerState<ProductScreen> {
                 children: [
                   for (final v in product.variants)
                     ChoiceChip(
-                      label: Text('${v.label}${v.color != null ? ' · ${v.color}' : ''}${v.inStock ? '' : ' (sold out)'}'),
+                      label: Text(
+                          '${v.label}${v.color != null ? ' · ${v.color}' : ''}${v.inStock ? '' : ' (sold out)'}'),
                       selected: v.variantId == variant?.variantId,
-                      onSelected: v.inStock ? (_) => setState(() {
-                            _variantId = v.variantId;
-                            _qty = 1;
-                          }) : null,
+                      onSelected: v.inStock
+                          ? (_) => setState(() {
+                                _variantId = v.variantId;
+                                _qty = 1;
+                              })
+                          : null,
                     ),
                 ],
               ),
@@ -83,11 +113,20 @@ class _ProductScreenState extends ConsumerState<ProductScreen> {
                 Row(
                   children: [
                     Text(formatMoney(variant.priceMinor, variant.currency),
-                        style: Theme.of(context).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w800)),
+                        style: Theme.of(context)
+                            .textTheme
+                            .headlineSmall
+                            ?.copyWith(fontWeight: FontWeight.w800)),
                     const Spacer(),
                     variant.inStock
-                        ? LabelBadge(icon: Icons.inventory_2_outlined, text: '${variant.stock} in stock', color: AppColors.success)
-                        : const LabelBadge(icon: Icons.remove_shopping_cart, text: 'Sold out', color: AppColors.danger),
+                        ? LabelBadge(
+                            icon: Icons.inventory_2_outlined,
+                            text: '${variant.stock} in stock',
+                            color: AppColors.success)
+                        : const LabelBadge(
+                            icon: Icons.remove_shopping_cart,
+                            text: 'Sold out',
+                            color: AppColors.danger),
                   ],
                 ),
                 const SizedBox(height: AppSpacing.md),
@@ -97,36 +136,49 @@ class _ProductScreenState extends ConsumerState<ProductScreen> {
                     const Spacer(),
                     IconButton.outlined(
                       tooltip: 'Decrease quantity',
-                      onPressed: qty > 1 ? () => setState(() => _qty = qty - 1) : null,
+                      onPressed:
+                          qty > 1 ? () => setState(() => _qty = qty - 1) : null,
                       icon: const Icon(Icons.remove),
                     ),
                     Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
-                      child: Text('$qty', style: Theme.of(context).textTheme.titleLarge, semanticsLabel: 'Quantity $qty'),
+                      padding:
+                          const EdgeInsets.symmetric(horizontal: AppSpacing.md),
+                      child: Text('$qty',
+                          style: Theme.of(context).textTheme.titleLarge,
+                          semanticsLabel: 'Quantity $qty'),
                     ),
                     IconButton.outlined(
                       tooltip: 'Increase quantity',
-                      onPressed: qty < clampQuantity(99, available) ? () => setState(() => _qty = qty + 1) : null,
+                      onPressed: qty < clampQuantity(99, available)
+                          ? () => setState(() => _qty = qty + 1)
+                          : null,
                       icon: const Icon(Icons.add),
                     ),
                   ],
                 ),
                 if (inCart > 0)
-                  Text('$inCart already in your cart', style: const TextStyle(color: AppColors.textMuted)),
+                  Text('$inCart already in your cart',
+                      style: const TextStyle(color: AppColors.textMuted)),
                 const SizedBox(height: AppSpacing.lg),
                 FilledButton.icon(
                   onPressed: available < 1 || qty < 1
                       ? null
                       : () {
-                          final added = ref.read(cartProvider.notifier).add(product, variant, qty);
+                          final added = ref
+                              .read(cartProvider.notifier)
+                              .add(product, variant, qty);
                           showSnack(
                             context,
-                            added ? 'Added $qty × ${product.name} (${variant.label}) to cart' : 'Your cart is full (10 different items max).',
+                            added
+                                ? 'Added $qty × ${product.name} (${variant.label}) to cart'
+                                : 'Your cart is full (10 different items max).',
                             error: !added,
                           );
                         },
                   icon: const Icon(Icons.add_shopping_cart),
-                  label: Text(available < 1 ? 'No more stock available' : 'Add to cart'),
+                  label: Text(available < 1
+                      ? 'No more stock available'
+                      : 'Add to cart'),
                 ),
                 const SizedBox(height: AppSpacing.sm),
                 OutlinedButton.icon(

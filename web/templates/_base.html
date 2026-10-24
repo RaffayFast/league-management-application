@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#0E1B3D">
+  <title>{{ title }} · LeagueHub</title>
+  <link rel="stylesheet" href="/web/static/guest_player.css">
+</head>
+<body class="page-{{ page }}">
+  <a class="skip-link" href="#main">Skip to main content</a>
+  <header class="topbar">
+    <div class="topbar-inner">
+      <a class="brand" href="/web/">
+        <span class="brand-mark" aria-hidden="true">LH</span>
+        <span class="brand-name">LeagueHub</span>
+      </a>
+      <div class="topbar-status">
+        <span class="chip" id="connection-status" role="status" aria-live="polite" hidden></span>
+        <span class="chip chip-member" id="member-chip" hidden></span>
+        <button type="button" class="link-button" id="signout-btn" hidden>Sign out</button>
+      </div>
+    </div>
+  </header>
+  <main id="main" class="page" tabindex="-1">
+    {% block main %}{% endblock %}
+  </main>
+  <footer class="footer">
+    <p>Free to watch. No app download or account needed.</p>
+  </footer>
+  <div class="toast-region" id="toast-region" role="status" aria-live="polite"></div>
+  <script type="application/json" id="guest-boot">{{ boot | tojson }}</script>
+  <script src="/web/static/guest_player.js" defer></script>
+</body>
+</html>

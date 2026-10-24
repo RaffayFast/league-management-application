@@ -24,7 +24,8 @@ class LeagueRepository {
         FixturesResponse.fromJson,
       );
 
-  Future<Cached<StandingsResponse>> standings(String leagueId) => _fetcher.fetch(
+  Future<Cached<StandingsResponse>> standings(String leagueId) =>
+      _fetcher.fetch(
         '/api/v1/leagues/${Uri.encodeComponent(leagueId)}/standings',
         StandingsResponse.fromJson,
       );
@@ -42,12 +43,16 @@ class LeagueRepository {
   /// POST /api/v1/events with the exact A6 body. Returns the ack and whether it was a replay.
   Future<(EventAck, bool)> postEvent(Json eventBody) async {
     final response = await _api.send('POST', '/api/v1/events', body: eventBody);
-    return (parseOrThrow(response.data, EventAck.fromJson, 'event ack'), response.isReplay);
+    return (
+      parseOrThrow(response.data, EventAck.fromJson, 'event ack'),
+      response.isReplay
+    );
   }
 }
 
 final leagueRepositoryProvider = Provider(
-  (ref) => LeagueRepository(ref.watch(cachedFetcherProvider), ref.watch(apiClientProvider)),
+  (ref) => LeagueRepository(
+      ref.watch(cachedFetcherProvider), ref.watch(apiClientProvider)),
 );
 
 final leaguesProvider = FutureProvider.autoDispose<Cached<List<League>>>((ref) {
@@ -55,27 +60,33 @@ final leaguesProvider = FutureProvider.autoDispose<Cached<List<League>>>((ref) {
   return ref.watch(leagueRepositoryProvider).leagues();
 });
 
-final fixturesProvider = FutureProvider.autoDispose.family<Cached<FixturesResponse>, String>((ref, leagueId) {
+final fixturesProvider = FutureProvider.autoDispose
+    .family<Cached<FixturesResponse>, String>((ref, leagueId) {
   ref.watch(refreshTickProvider);
   return ref.watch(leagueRepositoryProvider).fixtures(leagueId);
 });
 
-final standingsProvider = FutureProvider.autoDispose.family<Cached<StandingsResponse>, String>((ref, leagueId) {
+final standingsProvider = FutureProvider.autoDispose
+    .family<Cached<StandingsResponse>, String>((ref, leagueId) {
   ref.watch(refreshTickProvider);
   return ref.watch(leagueRepositoryProvider).standings(leagueId);
 });
 
-final sportProvider = FutureProvider.autoDispose.family<Cached<SportConfig>, String>((ref, sportId) {
+final sportProvider = FutureProvider.autoDispose
+    .family<Cached<SportConfig>, String>((ref, sportId) {
   return ref.watch(leagueRepositoryProvider).sport(sportId);
 });
 
 /// All fixtures across visible leagues; used for club/team views and dashboards.
-final allFixturesProvider = FutureProvider.autoDispose<List<Fixture>>((ref) async {
+final allFixturesProvider =
+    FutureProvider.autoDispose<List<Fixture>>((ref) async {
   final leagues = await ref.watch(leaguesProvider.future);
   final out = <Fixture>[];
   for (final league in leagues.data) {
     try {
-      out.addAll((await ref.watch(fixturesProvider(league.leagueId).future)).data.fixtures);
+      out.addAll((await ref.watch(fixturesProvider(league.leagueId).future))
+          .data
+          .fixtures);
     } catch (_) {
       // One unavailable league must not hide the others.
     }

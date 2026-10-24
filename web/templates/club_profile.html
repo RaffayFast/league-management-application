@@ -1,0 +1,37 @@
+{% extends "_base.html" %}
+{% block main %}
+<section class="card card-navy profile-header" aria-labelledby="club-name">
+  <p class="eyebrow">Club</p>
+  <h1 id="club-name">{{ club.name }}</h1>
+  {% if club.home_venue %}<p class="muted-on-navy">{{ club.home_venue.name }}</p>{% endif %}
+</section>
+<div class="watch-layout">
+  <div class="watch-main">
+    {% include "_fixture_list.html" %}
+    <section class="card" aria-labelledby="roster-title">
+      <h2 id="roster-title">Squad</h2>
+      {% if roster %}
+      <ul class="roster-list">
+        {% for p in roster %}
+        <li><a href="/web/players/{{ p.player_id }}">{{ p.name }}</a> <span class="muted">{{ p.position | upper }}{% if p.role in ("captain", "vice_captain") %} · {{ p.role | replace("_", " ") | capitalize }}{% endif %}</span></li>
+        {% endfor %}
+      </ul>
+      {% else %}
+      <p class="muted">No registered players yet.</p>
+      {% endif %}
+    </section>
+    {% if club.staff %}
+    <section class="card" aria-labelledby="staff-title">
+      <h2 id="staff-title">Staff</h2>
+      <ul class="roster-list">
+        {% for s in club.staff %}<li>{{ s.name }} <span class="muted">{{ s.role | capitalize }}</span></li>{% endfor %}
+      </ul>
+    </section>
+    {% endif %}
+  </div>
+  <aside class="watch-side">
+    {% include "_merch_cart.html" %}
+  </aside>
+</div>
+{% include "_auth_modal.html" %}
+{% endblock %}

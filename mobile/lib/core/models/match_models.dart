@@ -63,7 +63,8 @@ class MatchEvent {
 
   /// score / discipline / tiebreak_winner can be corrected (A6 compensation).
   bool get isCompensatable =>
-      !compensated && (type == 'score' || type == 'discipline' || type == 'tiebreak_winner');
+      !compensated &&
+      (type == 'score' || type == 'discipline' || type == 'tiebreak_winner');
 
   factory MatchEvent.fromJson(Json j) => MatchEvent(
         sequence: asInt(j['sequence']),
@@ -146,7 +147,9 @@ class ScoreObject {
   }
 
   factory ScoreObject.fromJson(Json j) {
-    if (j['match_id'] is! String) throw MalformedResponse('score object without match_id');
+    if (j['match_id'] is! String) {
+      throw MalformedResponse('score object without match_id');
+    }
     return ScoreObject(
       matchId: asString(j['match_id']),
       sportId: asStringOrNull(j['sport_id']),
@@ -161,7 +164,9 @@ class ScoreObject {
       events: mapList(j['events'], MatchEvent.fromJson),
       homeName: asStringOrNull(j['home_name']),
       awayName: asStringOrNull(j['away_name']),
-      pinnedProduct: j['pinned_product'] is Map ? PinnedProduct.fromJson(asMap(j['pinned_product'])) : null,
+      pinnedProduct: j['pinned_product'] is Map
+          ? PinnedProduct.fromJson(asMap(j['pinned_product']))
+          : null,
     );
   }
 }
@@ -183,7 +188,9 @@ class ScoringEventDef {
   String describe(String scoringModel) {
     switch (scoringModel) {
       case 'innings':
-        final parts = <String>['${asInt(config['runs'])} run${asInt(config['runs']) == 1 ? '' : 's'}'];
+        final parts = <String>[
+          '${asInt(config['runs'])} run${asInt(config['runs']) == 1 ? '' : 's'}'
+        ];
         if (asBool(config['wicket'])) parts.add('wicket');
         if (!asBool(config['legal_ball'], true)) parts.add('extra ball');
         return parts.join(' · ');

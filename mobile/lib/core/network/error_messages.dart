@@ -3,12 +3,15 @@ import 'api_exception.dart';
 
 /// Plain-English explanation for a backend error code (api_contract.md catalogue).
 /// Used for live API errors and for rejected offline-sync actions.
-String describeErrorCode(String? code, {Json details = const {}, String? fallback}) {
+String describeErrorCode(String? code,
+    {Json details = const {}, String? fallback}) {
   switch (code) {
     case null:
       return fallback ?? 'Something went wrong.';
     case 'VALIDATION_ERROR':
-      final fields = asList(details['fields']).map((e) => e.toString().replaceAll('_', ' ')).toList();
+      final fields = asList(details['fields'])
+          .map((e) => e.toString().replaceAll('_', ' '))
+          .toList();
       return fields.isEmpty
           ? 'Some of the information entered is not valid.'
           : 'Please check: ${fields.join(', ')}.';
@@ -84,6 +87,24 @@ String describeErrorCode(String? code, {Json details = const {}, String? fallbac
     case 'DUPLICATE_REQUEST_ID':
     case 'DUPLICATE_ACTION_ID':
       return 'This was already submitted with different details, so the server kept the original.';
+    case 'GUEST_WRITE_FORBIDDEN':
+      return 'Guests can watch, but posting and buying need an account. Sign in or create one to continue.';
+    case 'GUEST_TOKEN_ALREADY_MERGED':
+      return 'This guest cart was already merged into an account, so the server did not merge it again.';
+    case 'STREAM_NOT_FOUND':
+      return 'This stream has not started yet or has already ended.';
+    case 'KEY_REVOKED':
+      return 'The broadcaster revoked this stream, so it can no longer be played.';
+    case 'COSTREAM_SESSION_FULL':
+      return 'This co-stream already has the maximum of four broadcasters.';
+    case 'UNSUPPORTED_LAYOUT':
+      return 'That co-stream layout cannot show the current number of broadcasters.';
+    case 'QR_NOT_FOUND':
+      return 'This QR code is not linked to anything on the LeagueHub server.';
+    case 'USER_EXISTS':
+      return 'An account with this email already exists. Sign in instead.';
+    case 'HTTP_404':
+      return 'The server could not find this item.';
     case 'NETWORK_ERROR':
       return 'Cannot reach the server. Check your connection or the server address in Settings.';
     case 'TIMEOUT':
@@ -100,8 +121,11 @@ String describeErrorCode(String? code, {Json details = const {}, String? fallbac
 
 String friendlyError(Object error) {
   if (error is ApiException) {
-    return describeErrorCode(error.code, details: error.details, fallback: error.message);
+    return describeErrorCode(error.code,
+        details: error.details, fallback: error.message);
   }
-  if (error is MalformedResponse) return describeErrorCode('MALFORMED_RESPONSE');
+  if (error is MalformedResponse) {
+    return describeErrorCode('MALFORMED_RESPONSE');
+  }
   return 'Something went wrong. Please try again.';
 }

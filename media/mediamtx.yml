@@ -1,0 +1,63 @@
+# MediaMTX configuration for LeagueHub (image bluenviron/mediamtx:1.9.1-ffmpeg; keys verified against the
+# image's own default mediamtx.yml). Unlisted keys keep their defaults. Any key can be overridden with an
+# MTX_<KEY> environment variable; docker-compose sets MTX_AUTHHTTPADDRESS so the hook token stays in .env.
+#
+# Host ports: RTMP 1935, HLS 8888, WebRTC WHIP/WHEP 8889 (+ 8189/udp for WebRTC media).
+# Internal only (never published): Control API 9997, RTSP 8554 (used by the compositor).
+
+logLevel: info
+# A publisher that stops sending for 1 s is closed, so abrupt host loss is noticed inside the
+# 1.5 s co-stream handoff target. A clean disconnect (app closed, process killed) is detected at once.
+readTimeout: 1s
+writeTimeout: 10s
+
+###############################################
+# Authentication: every publish/read asks the backend (services/media_access.py).
+# 2xx admits the session; revoked keys get 409 KEY_REVOKED, unknown keys 404, other paths 403.
+authMethod: http
+authHTTPAddress: http://web:8080/internal/media/auth?token=dev-media-hook-token
+authHTTPExclude:
+- action: api
+- action: metrics
+- action: pprof
+
+###############################################
+# Control API, used by the backend to list paths, read byte counters and kick publishers.
+api: yes
+apiAddress: :9997
+
+rtsp: yes
+rtspAddress: :8554
+rtmp: yes
+rtmpAddress: :1935
+hls: yes
+hlsAddress: :8888
+hlsVariant: lowLatency
+webrtc: yes
+webrtcAddress: :8889
+webrtcLocalUDPAddress: :8189
+srt: no
+
+###############################################
+# Paths. Anything else is "not configured" and refused by MediaMTX.
+paths:
+  # Solo broadcasts: rtmp://<host>:1935/live/<stream_key>, WHIP http://<host>:8889/live/<stream_key>/whip,
+  # HLS http://<host>:8888/live/<stream_key>/index.m3u8
+  "~^live/[A-Za-z0-9_.:-]+$":
+    runOnReady: wget -q -O /dev/null --post-data= "$LEAGUEHUB_API/internal/media/events?token=$LEAGUEHUB_HOOK_TOKEN&event=ready&path=$MTX_PATH"
+    runOnNotReady: wget -q -O /dev/null --post-data= "$LEAGUEHUB_API/internal/media/events?token=$LEAGUEHUB_HOOK_TOKEN&event=not_ready&path=$MTX_PATH"
+
+  # One co-stream participant: costream/<session_id>/<player_id>?key=<that player's active stream key>.
+  # runOnNotReady is how a real host disconnect reaches CostreamService.handle_disconnect.
+  "~^costream/[A-Za-z0-9_.:-]+/[A-Za-z0-9_.:-]+$":
+    runOnReady: wget -q -O /dev/null --post-data= "$LEAGUEHUB_API/internal/media/events?token=$LEAGUEHUB_HOOK_TOKEN&event=ready&path=$MTX_PATH"
+    runOnNotReady: wget -q -O /dev/null --post-data= "$LEAGUEHUB_API/internal/media/events?token=$LEAGUEHUB_HOOK_TOKEN&event=not_ready&path=$MTX_PATH"
+
+  # The composite http://<host>:8888/costream/<session_id>/index.m3u8. MediaMTX starts the ffmpeg
+  # compositor when the first viewer asks and stops it 10 s after the last one leaves, so no encoder is
+  # left behind. A handoff kicks the compositor; runOnDemandRestart brings it back with the new layout.
+  "~^costream/([A-Za-z0-9_.:-]+)$":
+    runOnDemand: sh /media/compose.sh $G1
+    runOnDemandRestart: yes
+    runOnDemandStartTimeout: 15s
+    runOnDemandCloseAfter: 10s

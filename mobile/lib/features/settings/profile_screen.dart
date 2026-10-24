@@ -40,16 +40,24 @@ class ProfileScreen extends ConsumerWidget {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(user.name, style: Theme.of(context).textTheme.titleLarge),
-                        Text(user.email, style: const TextStyle(color: AppColors.textMuted)),
+                        Text(user.name,
+                            style: Theme.of(context).textTheme.titleLarge),
+                        Text(user.email,
+                            style: const TextStyle(color: AppColors.textMuted)),
                         const SizedBox(height: AppSpacing.sm),
                         Wrap(
                           spacing: AppSpacing.sm,
                           runSpacing: AppSpacing.xs,
                           children: [
-                            LabelBadge(icon: Icons.badge_outlined, text: roleLabel(user.role), color: AppColors.navySoft),
+                            LabelBadge(
+                                icon: Icons.badge_outlined,
+                                text: roleLabel(user.role),
+                                color: AppColors.navySoft),
                             if (session.tenant != null)
-                              LabelBadge(icon: Icons.apartment, text: session.tenant!.name, color: AppColors.info),
+                              LabelBadge(
+                                  icon: Icons.apartment,
+                                  text: session.tenant!.name,
+                                  color: AppColors.info),
                           ],
                         ),
                       ],
@@ -64,14 +72,18 @@ class ProfileScreen extends ConsumerWidget {
             child: Column(
               children: [
                 if (user.leagueId != null)
-                  ListTile(leading: const Icon(Icons.emoji_events_outlined), title: const Text('League'), subtitle: Text(user.leagueId!)),
+                  ListTile(
+                      leading: const Icon(Icons.emoji_events_outlined),
+                      title: const Text('League'),
+                      subtitle: Text(user.leagueId!)),
                 if (user.clubId != null)
                   ListTile(
                     leading: const Icon(Icons.shield_outlined),
                     title: const Text('Club'),
                     subtitle: Text(user.clubId!),
                     trailing: const Icon(Icons.chevron_right),
-                    onTap: () => context.push('/club/${Uri.encodeComponent(user.clubId!)}'),
+                    onTap: () => context
+                        .push('/club/${Uri.encodeComponent(user.clubId!)}'),
                   ),
                 if (user.playerId != null)
                   ListTile(
@@ -79,7 +91,8 @@ class ProfileScreen extends ConsumerWidget {
                     title: const Text('My player profile'),
                     subtitle: Text(user.playerId!),
                     trailing: const Icon(Icons.chevron_right),
-                    onTap: () => context.push('/player/${Uri.encodeComponent(user.playerId!)}'),
+                    onTap: () => context
+                        .push('/player/${Uri.encodeComponent(user.playerId!)}'),
                   ),
                 if (Permissions.canManageRoster(user))
                   ListTile(
@@ -102,9 +115,14 @@ class ProfileScreen extends ConsumerWidget {
             child: Column(
               children: [
                 ListTile(
-                  leading: Icon(sync.online ? Icons.cloud_done_outlined : Icons.cloud_off),
-                  title: Text(sync.online ? 'Online' : (sync.hasNetwork ? 'Server unreachable' : 'Offline')),
-                  subtitle: Text('${sync.pending} pending · ${sync.rejected} need attention'),
+                  leading: Icon(sync.online
+                      ? Icons.cloud_done_outlined
+                      : Icons.cloud_off),
+                  title: Text(sync.online
+                      ? 'Online'
+                      : (sync.hasNetwork ? 'Server unreachable' : 'Offline')),
+                  subtitle: Text(
+                      '${sync.pending} pending · ${sync.rejected} need attention'),
                   trailing: const Icon(Icons.chevron_right),
                   onTap: () => context.push('/sync'),
                 ),
@@ -128,7 +146,8 @@ class ProfileScreen extends ConsumerWidget {
                 const ListTile(
                   leading: Icon(Icons.info_outline),
                   title: Text('App version'),
-                  subtitle: Text('${AppConfig.appName} ${AppConfig.appVersion}'),
+                  subtitle:
+                      Text('${AppConfig.appName} ${AppConfig.appVersion}'),
                 ),
               ],
             ),

@@ -1,0 +1,34 @@
+<div class="watch-layout">
+  <div class="watch-main">
+    <section class="card player-card" aria-label="Video player">
+      <div class="player-frame">
+        <video id="guest-video" data-testid="guest-video-player" controls playsinline muted preload="none"
+               aria-label="{% if session_id %}Co-stream {{ session_id }}{% else %}{{ snapshot.home.name }} vs {{ snapshot.away.name }}{% endif %} video"
+               {% if playback_url %}data-src="{{ playback_url }}"{% endif %}></video>
+        <div class="player-state" data-player-state role="status" aria-live="polite">
+          <p class="player-state-title" data-player-title>{% if playback_url %}Connecting to the stream…{% else %}Replay not available yet{% endif %}</p>
+          <p class="player-state-detail" data-player-detail></p>
+          <button type="button" class="btn btn-ghost" data-player-retry hidden>Try again</button>
+        </div>
+        <span class="live-badge" data-live-badge hidden>LIVE</span>
+      </div>
+    </section>
+  </div>
+  <aside class="watch-side">
+    {% include "_merch_cart.html" %}
+    <section class="card chat-card" aria-labelledby="chat-title">
+      <div class="chat-head">
+        <h2 id="chat-title">Live chat</h2>
+        <span class="chat-room" data-chat-room>{{ chat_room_id }}</span>
+      </div>
+      <p class="chat-empty" data-chat-empty>No messages yet. Sign in to join the conversation.</p>
+      <ul class="chat-list" id="chat-list" data-testid="chat-message-list" aria-label="Chat messages" aria-live="polite"></ul>
+      <form class="chat-form" id="chat-form" novalidate>
+        <label for="chat-input" class="sr-only">Chat message</label>
+        <input id="chat-input" data-testid="chat-input-field" type="text" maxlength="500" autocomplete="off"
+               placeholder="Say something about the match">
+        <button type="submit" class="btn btn-lime" data-testid="chat-send-btn">Send</button>
+      </form>
+    </section>
+  </aside>
+</div>

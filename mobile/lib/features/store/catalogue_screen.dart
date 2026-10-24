@@ -50,11 +50,18 @@ class CatalogueScreen extends ConsumerWidget {
           child: ListView(
             padding: const EdgeInsets.all(AppSpacing.lg),
             children: [
-              if (cached.fromCache) ...[CachedBanner(cachedAt: cached.cachedAt), const SizedBox(height: AppSpacing.md)],
+              if (cached.fromCache) ...[
+                CachedBanner(cachedAt: cached.cachedAt),
+                const SizedBox(height: AppSpacing.md)
+              ],
               const _DiscountHint(),
               const SizedBox(height: AppSpacing.md),
               if (cached.data.isEmpty)
-                const SizedBox(height: 300, child: EmptyView(title: 'No products yet', icon: Icons.storefront_outlined))
+                const SizedBox(
+                    height: 300,
+                    child: EmptyView(
+                        title: 'No products yet',
+                        icon: Icons.storefront_outlined))
               else
                 for (final p in cached.data) ...[
                   _ProductCard(product: p),
@@ -75,7 +82,9 @@ class _DiscountHint extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       padding: const EdgeInsets.all(AppSpacing.md),
-      decoration: BoxDecoration(color: AppColors.navy, borderRadius: BorderRadius.circular(AppSpacing.radius)),
+      decoration: BoxDecoration(
+          color: AppColors.navy,
+          borderRadius: BorderRadius.circular(AppSpacing.radius)),
       child: const Row(
         children: [
           Icon(Icons.local_offer_outlined, color: AppColors.lime),
@@ -103,7 +112,8 @@ class _ProductCard extends StatelessWidget {
     return Card(
       clipBehavior: Clip.antiAlias,
       child: InkWell(
-        onTap: () => context.push('/product/${Uri.encodeComponent(product.productId)}'),
+        onTap: () =>
+            context.push('/product/${Uri.encodeComponent(product.productId)}'),
         child: Padding(
           padding: const EdgeInsets.all(AppSpacing.lg),
           child: Row(
@@ -111,17 +121,25 @@ class _ProductCard extends StatelessWidget {
               Container(
                 width: 72,
                 height: 72,
-                decoration: BoxDecoration(color: const Color(0xFFEFF2F7), borderRadius: BorderRadius.circular(12)),
-                child: const Icon(Icons.checkroom, size: 36, color: AppColors.navySoft, semanticLabel: 'Product image unavailable'),
+                decoration: BoxDecoration(
+                    color: const Color(0xFFEFF2F7),
+                    borderRadius: BorderRadius.circular(12)),
+                child: const Icon(Icons.checkroom,
+                    size: 36,
+                    color: AppColors.navySoft,
+                    semanticLabel: 'Product image unavailable'),
               ),
               const SizedBox(width: AppSpacing.lg),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(product.name, style: Theme.of(context).textTheme.titleMedium),
+                    Text(product.name,
+                        style: Theme.of(context).textTheme.titleMedium),
                     const SizedBox(height: 2),
-                    Text(product.description, maxLines: 2, overflow: TextOverflow.ellipsis,
+                    Text(product.description,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
                         style: const TextStyle(color: AppColors.textMuted)),
                     const SizedBox(height: AppSpacing.sm),
                     Wrap(
@@ -130,10 +148,18 @@ class _ProductCard extends StatelessWidget {
                       crossAxisAlignment: WrapCrossAlignment.center,
                       children: [
                         if (price != null)
-                          Text(formatMoney(price), style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 16)),
+                          Text(formatMoney(price),
+                              style: const TextStyle(
+                                  fontWeight: FontWeight.w800, fontSize: 16)),
                         soldOut
-                            ? const LabelBadge(icon: Icons.remove_shopping_cart, text: 'Sold out', color: AppColors.danger)
-                            : LabelBadge(icon: Icons.inventory_2_outlined, text: '${product.totalStock} in stock', color: AppColors.success),
+                            ? const LabelBadge(
+                                icon: Icons.remove_shopping_cart,
+                                text: 'Sold out',
+                                color: AppColors.danger)
+                            : LabelBadge(
+                                icon: Icons.inventory_2_outlined,
+                                text: '${product.totalStock} in stock',
+                                color: AppColors.success),
                       ],
                     ),
                   ],

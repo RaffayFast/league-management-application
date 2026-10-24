@@ -26,7 +26,8 @@ class SyncReport {
   bool get isEmpty => outcomes.isEmpty && transportError == null;
 
   /// Match ids / player ids touched, so the UI can refresh them.
-  Set<String> get touchedTargets => outcomes.map((o) => o.action.target).toSet();
+  Set<String> get touchedTargets =>
+      outcomes.map((o) => o.action.target).toSet();
 }
 
 /// Sends queued actions to POST /api/v1/sync and applies each per-action
@@ -44,14 +45,20 @@ class SyncService {
     if (actions.isEmpty) return report;
     final device = await deviceId();
 
-    for (var start = 0; start < actions.length; start += AppConfig.maxSyncBatch) {
+    for (var start = 0;
+        start < actions.length;
+        start += AppConfig.maxSyncBatch) {
       final end = math.min(start + AppConfig.maxSyncBatch, actions.length);
       final chunk = actions.sublist(start, end);
-      final body = {'device_id': device, 'actions': chunk.map((a) => a.toEnvelope()).toList()};
+      final body = {
+        'device_id': device,
+        'actions': chunk.map((a) => a.toEnvelope()).toList()
+      };
 
       SyncResponse response;
       try {
-        response = parseOrThrow(await api.post('/api/v1/sync', body), SyncResponse.fromJson, 'sync response');
+        response = parseOrThrow(await api.post('/api/v1/sync', body),
+            SyncResponse.fromJson, 'sync response');
       } on ApiException catch (e) {
         report.transportError = e;
         if (e.kind == ApiErrorKind.http && e.statusCode == 400) {
@@ -76,7 +83,8 @@ class SyncService {
   }
 
   /// Applies server results to the queue. Public for unit tests.
-  Future<void> applyResults(List<PendingAction> sent, List<SyncResult> results, SyncReport report) async {
+  Future<void> applyResults(List<PendingAction> sent, List<SyncResult> results,
+      SyncReport report) async {
     final byId = {for (final r in results) r.actionId: r};
     final now = utcTimestamp();
     for (final action in sent) {
@@ -89,7 +97,8 @@ class SyncService {
       if (result.isApplied || result.isDuplicate) {
         await queue.remove(action.actionId);
       } else {
-        await queue.markRejected(action.actionId, result.errorCode ?? 'REJECTED');
+        await queue.markRejected(
+            action.actionId, result.errorCode ?? 'REJECTED');
       }
       await queue.addHistory(SyncHistoryEntry(
         actionId: action.actionId,

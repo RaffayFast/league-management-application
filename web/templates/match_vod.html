@@ -1,0 +1,24 @@
+{% extends "_base.html" %}
+{% block main %}
+{% include "_match_header.html" %}
+<div class="watch-layout">
+  <div class="watch-main">
+    <section class="card player-card" aria-label="Match replay">
+      <div class="player-frame">
+        <video id="guest-video" data-testid="guest-video-player" controls playsinline preload="none"
+               aria-label="Replay: {{ snapshot.home.name }} vs {{ snapshot.away.name }}"
+               {% if playback_url %}data-src="{{ playback_url }}"{% endif %}></video>
+        <div class="player-state" data-player-state role="status" aria-live="polite">
+          <p class="player-state-title" data-player-title>Replay not available yet</p>
+          <p class="player-state-detail" data-player-detail>Recordings appear here once the broadcast has been archived.</p>
+          <button type="button" class="btn btn-ghost" data-player-retry hidden>Try again</button>
+        </div>
+      </div>
+    </section>
+  </div>
+  <aside class="watch-side">
+    {% include "_merch_cart.html" %}
+  </aside>
+</div>
+{% include "_auth_modal.html" %}
+{% endblock %}

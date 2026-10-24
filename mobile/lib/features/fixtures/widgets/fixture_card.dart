@@ -17,12 +17,14 @@ class FixtureCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final f = fixture;
-    final showScore = f.status == MatchStatus.inProgress || f.status == MatchStatus.completed;
+    final showScore =
+        f.status == MatchStatus.inProgress || f.status == MatchStatus.completed;
     final theme = Theme.of(context);
 
     return Semantics(
       button: true,
-      label: '${f.homeLabel} versus ${f.awayLabel}, ${matchStatusLabel(f.status, f.statusRaw)}'
+      label:
+          '${f.homeLabel} versus ${f.awayLabel}, ${matchStatusLabel(f.status, f.statusRaw)}'
           '${showScore ? ', score ${f.homeScore} to ${f.awayScore}' : ''}. Open match.',
       child: Card(
         clipBehavior: Clip.antiAlias,
@@ -40,8 +42,11 @@ class FixtureCard extends StatelessWidget {
                       const SizedBox(width: AppSpacing.sm),
                       Expanded(
                         child: Text(
-                          leagueName != null ? '$leagueName · ${formatKickoff(f.scheduledAt)}' : formatKickoff(f.scheduledAt),
-                          style: theme.textTheme.bodySmall?.copyWith(color: AppColors.textMuted),
+                          leagueName != null
+                              ? '$leagueName · ${formatKickoff(f.scheduledAt)}'
+                              : formatKickoff(f.scheduledAt),
+                          style: theme.textTheme.bodySmall
+                              ?.copyWith(color: AppColors.textMuted),
                           overflow: TextOverflow.ellipsis,
                           textAlign: TextAlign.end,
                         ),
@@ -49,9 +54,17 @@ class FixtureCard extends StatelessWidget {
                     ],
                   ),
                   const SizedBox(height: AppSpacing.md),
-                  _TeamLine(name: f.homeLabel, score: showScore ? '${f.homeScore}' : null, leading: f.homeScore > f.awayScore && f.status == MatchStatus.completed),
+                  _TeamLine(
+                      name: f.homeLabel,
+                      score: showScore ? '${f.homeScore}' : null,
+                      leading: f.homeScore > f.awayScore &&
+                          f.status == MatchStatus.completed),
                   const SizedBox(height: AppSpacing.sm),
-                  _TeamLine(name: f.awayLabel, score: showScore ? '${f.awayScore}' : null, leading: f.awayScore > f.homeScore && f.status == MatchStatus.completed),
+                  _TeamLine(
+                      name: f.awayLabel,
+                      score: showScore ? '${f.awayScore}' : null,
+                      leading: f.awayScore > f.homeScore &&
+                          f.status == MatchStatus.completed),
                 ],
               ),
             ),
@@ -77,9 +90,13 @@ class _TeamLine extends StatelessWidget {
       children: [
         TeamAvatar(name: name, size: 28),
         const SizedBox(width: AppSpacing.md),
-        Expanded(child: Text(name, style: style, overflow: TextOverflow.ellipsis)),
+        Expanded(
+            child: Text(name, style: style, overflow: TextOverflow.ellipsis)),
         if (score != null)
-          Text(score!, style: style?.copyWith(fontSize: 20, fontFeatures: const [FontFeature.tabularFigures()])),
+          Text(score!,
+              style: style?.copyWith(
+                  fontSize: 20,
+                  fontFeatures: const [FontFeature.tabularFigures()])),
       ],
     );
   }

@@ -1,6 +1,13 @@
 import 'json.dart';
 
-enum UserRole { superAdmin, leagueOrganizer, clubManager, player, viewer, unknown }
+enum UserRole {
+  superAdmin,
+  leagueOrganizer,
+  clubManager,
+  player,
+  viewer,
+  unknown
+}
 
 UserRole parseRole(String raw) => switch (raw) {
       'super_admin' => UserRole.superAdmin,
@@ -68,7 +75,11 @@ class AppUser {
 }
 
 class Tenant {
-  const Tenant({required this.tenantId, required this.name, this.logoUrl, this.primaryColor});
+  const Tenant(
+      {required this.tenantId,
+      required this.name,
+      this.logoUrl,
+      this.primaryColor});
 
   final String tenantId;
   final String name;
@@ -123,7 +134,11 @@ class LoginResponse {
 
 /// A persisted, authenticated session. The password is never stored.
 class Session {
-  const Session({required this.token, required this.user, this.tenant, required this.expiresAt});
+  const Session(
+      {required this.token,
+      required this.user,
+      this.tenant,
+      required this.expiresAt});
 
   final String token;
   final AppUser user;
@@ -132,8 +147,11 @@ class Session {
 
   bool get isExpired => DateTime.now().toUtc().isAfter(expiresAt);
 
-  Session copyWith({AppUser? user, Tenant? tenant}) =>
-      Session(token: token, user: user ?? this.user, tenant: tenant ?? this.tenant, expiresAt: expiresAt);
+  Session copyWith({AppUser? user, Tenant? tenant}) => Session(
+      token: token,
+      user: user ?? this.user,
+      tenant: tenant ?? this.tenant,
+      expiresAt: expiresAt);
 
   Json toJson() => {
         'token': token,
@@ -146,6 +164,7 @@ class Session {
         token: asString(j['token']),
         user: AppUser.fromJson(asMap(j['user'])),
         tenant: j['tenant'] is Map ? Tenant.fromJson(asMap(j['tenant'])) : null,
-        expiresAt: DateTime.tryParse(asString(j['expires_at']))?.toUtc() ?? DateTime.fromMillisecondsSinceEpoch(0, isUtc: true),
+        expiresAt: DateTime.tryParse(asString(j['expires_at']))?.toUtc() ??
+            DateTime.fromMillisecondsSinceEpoch(0, isUtc: true),
       );
 }

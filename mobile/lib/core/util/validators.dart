@@ -9,7 +9,8 @@ String? validateEmail(String? v) {
   return null;
 }
 
-String? validatePassword(String? v) => (v == null || v.isEmpty) ? 'Enter your password' : null;
+String? validatePassword(String? v) =>
+    (v == null || v.isEmpty) ? 'Enter your password' : null;
 
 String? validateRequiredText(String? v, String field) =>
     (v == null || v.trim().isEmpty) ? 'Enter a $field' : null;
@@ -34,18 +35,23 @@ List<String> validateTransferForm({
     if (toSquadId == null) {
       errors.add('Choose a destination squad.');
     } else if (toSquadId == fromSquadId) {
-      errors.add('The destination squad must be different from the current squad.');
+      errors.add(
+          'The destination squad must be different from the current squad.');
     }
   }
   if (effectiveDate == null) {
     errors.add('Choose an effective date.');
-  } else if (window != null && window.open.isNotEmpty && !window.contains(effectiveDate)) {
-    errors.add('The effective date must be inside the transfer window (${window.open} to ${window.close}).');
+  } else if (window != null &&
+      window.open.isNotEmpty &&
+      !window.contains(effectiveDate)) {
+    errors.add(
+        'The effective date must be inside the transfer window (${window.open} to ${window.close}).');
   }
   if (type == TransferType.loan) {
     if (loanEndDate == null) {
       errors.add('Choose when the loan ends.');
-    } else if (effectiveDate != null && loanEndDate.compareTo(effectiveDate) <= 0) {
+    } else if (effectiveDate != null &&
+        loanEndDate.compareTo(effectiveDate) <= 0) {
       errors.add('The loan must end after its effective date.');
     }
   }

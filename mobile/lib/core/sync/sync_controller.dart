@@ -54,7 +54,8 @@ class SyncState {
       );
 }
 
-final syncControllerProvider = StateNotifierProvider<SyncController, SyncState>((ref) => SyncController(ref));
+final syncControllerProvider = StateNotifierProvider<SyncController, SyncState>(
+    (ref) => SyncController(ref));
 
 class SyncController extends StateNotifier<SyncState> {
   SyncController(this._ref) : super(const SyncState()) {
@@ -73,7 +74,9 @@ class SyncController extends StateNotifier<SyncState> {
     _sub = connectivity.watch().listen((hasNetwork) {
       final regained = hasNetwork && !state.hasNetwork;
       // A fresh interface gets a fresh chance; real requests will confirm reachability.
-      state = state.copyWith(hasNetwork: hasNetwork, serverReachable: hasNetwork ? true : state.serverReachable);
+      state = state.copyWith(
+          hasNetwork: hasNetwork,
+          serverReachable: hasNetwork ? true : state.serverReachable);
       if (regained) {
         _ref.read(refreshTickProvider.notifier).state++;
         unawaited(syncNow());
@@ -109,13 +112,16 @@ class SyncController extends StateNotifier<SyncState> {
     SyncReport? report;
     String message;
     try {
-      report = await _ref.read(syncServiceProvider).syncPending(owner: session.user.userId);
+      report = await _ref
+          .read(syncServiceProvider)
+          .syncPending(owner: session.user.userId);
       if (report.transportError != null) {
         message = 'Sync paused: ${friendlyError(report.transportError!)}';
       } else if (report.isEmpty) {
         message = 'Nothing to sync.';
       } else {
-        message = 'Synced: ${report.applied} applied, ${report.duplicate} already on server, '
+        message =
+            'Synced: ${report.applied} applied, ${report.duplicate} already on server, '
             '${report.rejected} rejected.';
       }
     } catch (e) {

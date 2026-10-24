@@ -1,0 +1,17 @@
+{% set status_labels = {"upcoming": "Upcoming", "in_progress": "Live", "completed": "Full time"} %}
+<section class="card card-navy match-header" aria-labelledby="match-title">
+  <p class="eyebrow">{{ league_name or "Match" }}{% if sport_name %} · {{ sport_name }}{% endif %}</p>
+  <h1 id="match-title" class="match-title">
+    <span class="team" data-team-home>{{ snapshot.home.name }}</span>
+    <span class="vs">vs</span>
+    <span class="team" data-team-away>{{ snapshot.away.name }}</span>
+  </h1>
+  <div class="score-row">
+    <div class="scoreline" data-testid="live-score-banner" role="status" aria-live="polite" aria-atomic="true"><span data-score-home>{{ snapshot.home.score }}</span> - <span data-score-away>{{ snapshot.away.score }}</span></div>
+    <span class="status-pill status-{{ snapshot.status }}" data-match-status>{{ status_labels.get(snapshot.status, snapshot.status) }}</span>
+  </div>
+  <p class="state-notice" data-state-notice hidden>
+    <span data-state-text></span>
+    <a class="state-link" data-state-link href="{{ snapshot.web_route }}">Go there</a>
+  </p>
+</section>

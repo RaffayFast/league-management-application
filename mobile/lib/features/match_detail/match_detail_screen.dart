@@ -12,6 +12,9 @@ import '../../core/widgets/dialogs.dart';
 import '../../core/widgets/state_views.dart';
 import '../auth/auth_controller.dart';
 import '../auth/permissions.dart';
+import '../streaming/models/stream_source.dart';
+import '../streaming/services/live_page_service.dart';
+import '../streaming/widgets/leaguehub_video_player.dart';
 import 'match_controller.dart';
 import 'widgets/event_timeline.dart';
 import 'widgets/scoring_panel.dart';
@@ -29,7 +32,10 @@ class MatchDetailScreen extends ConsumerWidget {
     return AppScaffold(
       title: 'Match',
       actions: [
-        IconButton(tooltip: 'Refresh', icon: const Icon(Icons.refresh), onPressed: controller.refresh),
+        IconButton(
+            tooltip: 'Refresh',
+            icon: const Icon(Icons.refresh),
+            onPressed: controller.refresh),
       ],
       body: AsyncBody(
         value: async,
@@ -37,7 +43,9 @@ class MatchDetailScreen extends ConsumerWidget {
         data: (cached) {
           final score = cached.data;
           final canScore = Permissions.canScore(user, score.leagueId);
-          final pending = ref.watch(pendingForTargetProvider(matchId)).valueOrNull ?? const [];
+          final pending =
+              ref.watch(pendingForTargetProvider(matchId)).valueOrNull ??
+                  const [];
 
           Future<void> correct(MatchEvent e) async {
             final reason = await _askReason(context, score, e);
@@ -59,8 +67,13 @@ class MatchDetailScreen extends ConsumerWidget {
             child: ListView(
               padding: const EdgeInsets.all(AppSpacing.lg),
               children: [
-                if (cached.fromCache) ...[CachedBanner(cachedAt: cached.cachedAt), const SizedBox(height: AppSpacing.md)],
+                if (cached.fromCache) ...[
+                  CachedBanner(cachedAt: cached.cachedAt),
+                  const SizedBox(height: AppSpacing.md)
+                ],
                 _ScoreHeader(score: score, live: controller.polling),
+                const SizedBox(height: AppSpacing.md),
+                _LiveSection(score: score),
                 const SizedBox(height: AppSpacing.md),
                 _InfoLinks(score: score),
                 if (score.pinnedProduct != null) ...[
@@ -75,7 +88,10 @@ class MatchDetailScreen extends ConsumerWidget {
                 SectionCard(
                   title: 'Timeline',
                   icon: Icons.timeline,
-                  child: EventTimeline(score: score, pending: pending, onCorrect: canScore ? correct : null),
+                  child: EventTimeline(
+                      score: score,
+                      pending: pending,
+                      onCorrect: canScore ? correct : null),
                 ),
               ],
             ),
@@ -85,7 +101,8 @@ class MatchDetailScreen extends ConsumerWidget {
     );
   }
 
-  Future<String?> _askReason(BuildContext context, ScoreObject score, MatchEvent e) async {
+  Future<String?> _askReason(
+      BuildContext context, ScoreObject score, MatchEvent e) async {
     final controller = TextEditingController();
     final formKey = GlobalKey<FormState>();
     final result = await showDialog<String>(
@@ -107,16 +124,20 @@ class MatchDetailScreen extends ConsumerWidget {
                 controller: controller,
                 autofocus: true,
                 decoration: const InputDecoration(labelText: 'Reason'),
-                validator: (v) => (v == null || v.trim().isEmpty) ? 'Enter a reason' : null,
+                validator: (v) =>
+                    (v == null || v.trim().isEmpty) ? 'Enter a reason' : null,
               ),
             ],
           ),
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
+          TextButton(
+              onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
           FilledButton(
             onPressed: () {
-              if (formKey.currentState!.validate()) Navigator.pop(ctx, controller.text.trim());
+              if (formKey.currentState!.validate()) {
+                Navigator.pop(ctx, controller.text.trim());
+              }
             },
             child: const Text('Submit correction'),
           ),
@@ -136,7 +157,8 @@ class _ScoreHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final scoreStyle = theme.textTheme.displaySmall?.copyWith(color: Colors.white, fontWeight: FontWeight.w800);
+    final scoreStyle = theme.textTheme.displaySmall
+        ?.copyWith(color: Colors.white, fontWeight: FontWeight.w800);
     String outcomeText() {
       if (score.status != MatchStatus.completed) return '';
       return switch (score.outcome) {
@@ -148,11 +170,14 @@ class _ScoreHeader extends StatelessWidget {
     }
 
     return Semantics(
-      label: '${score.homeLabel} ${score.home.display}, ${score.awayLabel} ${score.away.display}. '
+      label:
+          '${score.homeLabel} ${score.home.display}, ${score.awayLabel} ${score.away.display}. '
           '${matchStatusLabel(score.status, score.statusRaw)}. ${outcomeText()}',
       child: Container(
         padding: const EdgeInsets.all(AppSpacing.xl),
-        decoration: BoxDecoration(color: AppColors.navy, borderRadius: BorderRadius.circular(AppSpacing.radius)),
+        decoration: BoxDecoration(
+            color: AppColors.navy,
+            borderRadius: BorderRadius.circular(AppSpacing.radius)),
         child: ExcludeSemantics(
           child: Column(
             children: [
@@ -162,7 +187,11 @@ class _ScoreHeader extends StatelessWidget {
                   MatchStatusBadge(status: score.status, raw: score.statusRaw),
                   if (live) ...[
                     const SizedBox(width: AppSpacing.sm),
-                    const LabelBadge(icon: Icons.autorenew, text: 'Auto-updating', color: AppColors.lime, background: AppColors.navySoft),
+                    const LabelBadge(
+                        icon: Icons.autorenew,
+                        text: 'Auto-updating',
+                        color: AppColors.lime,
+                        background: AppColors.navySoft),
                   ],
                 ],
               ),
@@ -172,9 +201,12 @@ class _ScoreHeader extends StatelessWidget {
                 children: [
                   Expanded(child: _Side(name: score.homeLabel, label: 'Home')),
                   Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: AppSpacing.sm),
                     child: FittedBox(
-                      child: Text('${score.home.display}  –  ${score.away.display}', style: scoreStyle),
+                      child: Text(
+                          '${score.home.display}  –  ${score.away.display}',
+                          style: scoreStyle),
                     ),
                   ),
                   Expanded(child: _Side(name: score.awayLabel, label: 'Away')),
@@ -182,10 +214,13 @@ class _ScoreHeader extends StatelessWidget {
               ),
               if (outcomeText().isNotEmpty) ...[
                 const SizedBox(height: AppSpacing.md),
-                Text(outcomeText(), style: const TextStyle(color: AppColors.lime, fontWeight: FontWeight.w700)),
+                Text(outcomeText(),
+                    style: const TextStyle(
+                        color: AppColors.lime, fontWeight: FontWeight.w700)),
               ],
               const SizedBox(height: AppSpacing.sm),
-              Text('Version ${score.version} · ${score.matchId}', style: const TextStyle(color: Colors.white60, fontSize: 12)),
+              Text('Version ${score.version} · ${score.matchId}',
+                  style: const TextStyle(color: Colors.white60, fontSize: 12)),
             ],
           ),
         ),
@@ -205,10 +240,63 @@ class _Side extends StatelessWidget {
       children: [
         TeamAvatar(name: name, size: 48),
         const SizedBox(height: AppSpacing.sm),
-        Text(name, textAlign: TextAlign.center, maxLines: 2, overflow: TextOverflow.ellipsis,
-            style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700)),
-        Text(label, style: const TextStyle(color: Colors.white60, fontSize: 12)),
+        Text(name,
+            textAlign: TextAlign.center,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(
+                color: Colors.white, fontWeight: FontWeight.w700)),
+        Text(label,
+            style: const TextStyle(color: Colors.white60, fontSize: 12)),
       ],
+    );
+  }
+}
+
+/// Live video and chat entry points. The player shows while the match is in progress; the live
+/// page (public, with chat and the merchandise offer) is always one tap away.
+class _LiveSection extends ConsumerWidget {
+  const _LiveSection({required this.score});
+  final ScoreObject score;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final live = score.status == MatchStatus.inProgress;
+    void openLive() =>
+        context.push('/live/match/${Uri.encodeComponent(score.matchId)}');
+    return SectionCard(
+      title: live ? 'Watch live' : 'Live stream & chat',
+      icon: Icons.live_tv_outlined,
+      trailing: TextButton.icon(
+        onPressed: openLive,
+        icon: const Icon(Icons.forum_outlined, size: 18),
+        label: const Text('Live chat'),
+      ),
+      child: live
+          ? ref.watch(liveMatchPageProvider(score.matchId)).when(
+                skipLoadingOnRefresh: true,
+                loading: () => const SizedBox(
+                    height: 120,
+                    child: Center(child: CircularProgressIndicator())),
+                error: (e, _) => ErrorView(
+                    error: e,
+                    onRetry: () =>
+                        ref.invalidate(liveMatchPageProvider(score.matchId))),
+                data: (info) => LeagueHubVideoPlayer(
+                  key: ValueKey('detail-player-${score.matchId}'),
+                  source: StreamSource.match(
+                    matchId: score.matchId,
+                    playbackUrl: info.playbackUrl,
+                    title: '${score.homeLabel} vs ${score.awayLabel}',
+                  ),
+                ),
+              )
+          : Text(
+              score.status == MatchStatus.completed
+                  ? 'This match has finished. The live page keeps the final score and the chat.'
+                  : 'The broadcast starts when the match goes live. You can open the chat now.',
+              style: const TextStyle(color: AppColors.textMuted),
+            ),
     );
   }
 }
@@ -224,17 +312,25 @@ class _InfoLinks extends StatelessWidget {
         children: [
           ListTile(
             leading: const Icon(Icons.sports),
-            title: Text(score.sportId == null ? 'Sport not set' : humanize(score.sportId!)),
-            subtitle: Text(score.leagueId == null ? 'Friendly / no league' : 'League ${score.leagueId}'),
+            title: Text(score.sportId == null
+                ? 'Sport not set'
+                : humanize(score.sportId!)),
+            subtitle: Text(score.leagueId == null
+                ? 'Friendly / no league'
+                : 'League ${score.leagueId}'),
           ),
           if (score.leagueId != null)
             ListTile(
               leading: const Icon(Icons.leaderboard_outlined),
               title: const Text('League standings'),
               trailing: const Icon(Icons.chevron_right),
-              onTap: () => context.go('/standings?league=${Uri.encodeComponent(score.leagueId!)}'),
+              onTap: () => context.go(
+                  '/standings?league=${Uri.encodeComponent(score.leagueId!)}'),
             ),
-          for (final (id, name) in [(score.home.teamId, score.homeLabel), (score.away.teamId, score.awayLabel)])
+          for (final (id, name) in [
+            (score.home.teamId, score.homeLabel),
+            (score.away.teamId, score.awayLabel)
+          ])
             if (id != null)
               ListTile(
                 leading: const Icon(Icons.shield_outlined),
@@ -257,15 +353,19 @@ class _PinnedProductCard extends StatelessWidget {
     return Card(
       color: const Color(0xFFF4FBE4),
       child: ListTile(
-        contentPadding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg, vertical: AppSpacing.sm),
+        contentPadding: const EdgeInsets.symmetric(
+            horizontal: AppSpacing.lg, vertical: AppSpacing.sm),
         leading: const CircleAvatar(
           backgroundColor: AppColors.navy,
           child: Icon(Icons.checkroom, color: AppColors.lime),
         ),
-        title: Text(product.name, style: const TextStyle(fontWeight: FontWeight.w700)),
-        subtitle: Text('Match-day pick · ${formatMoney(product.priceMinor, product.currency)}'),
+        title: Text(product.name,
+            style: const TextStyle(fontWeight: FontWeight.w700)),
+        subtitle: Text(
+            'Match-day pick · ${formatMoney(product.priceMinor, product.currency)}'),
         trailing: const Icon(Icons.chevron_right),
-        onTap: () => context.push('/product/${Uri.encodeComponent(product.productId)}'),
+        onTap: () =>
+            context.push('/product/${Uri.encodeComponent(product.productId)}'),
       ),
     );
   }

@@ -15,9 +15,13 @@ Future<bool> confirmAction(
       title: Text(title),
       content: Text(message),
       actions: [
-        TextButton(onPressed: () => Navigator.of(ctx).pop(false), child: const Text('Cancel')),
+        TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: const Text('Cancel')),
         FilledButton(
-          style: destructive ? FilledButton.styleFrom(backgroundColor: AppColors.danger) : null,
+          style: destructive
+              ? FilledButton.styleFrom(backgroundColor: AppColors.danger)
+              : null,
           onPressed: () => Navigator.of(ctx).pop(true),
           child: Text(confirmLabel),
         ),
@@ -35,7 +39,8 @@ void showSnack(BuildContext context, String message, {bool error = false}) {
     ..showSnackBar(SnackBar(
       content: Row(
         children: [
-          Icon(error ? Icons.error_outline : Icons.check_circle_outline, color: Colors.white),
+          Icon(error ? Icons.error_outline : Icons.check_circle_outline,
+              color: Colors.white),
           const SizedBox(width: 8),
           Expanded(child: Text(message)),
         ],
@@ -46,7 +51,12 @@ void showSnack(BuildContext context, String message, {bool error = false}) {
 
 /// Card with a title row used across detail screens.
 class SectionCard extends StatelessWidget {
-  const SectionCard({super.key, required this.title, required this.child, this.trailing, this.icon});
+  const SectionCard(
+      {super.key,
+      required this.title,
+      required this.child,
+      this.trailing,
+      this.icon});
 
   final String title;
   final Widget child;
@@ -63,8 +73,13 @@ class SectionCard extends StatelessWidget {
           children: [
             Row(
               children: [
-                if (icon != null) ...[Icon(icon, size: 20, color: AppColors.navySoft), const SizedBox(width: 8)],
-                Expanded(child: Text(title, style: Theme.of(context).textTheme.titleMedium)),
+                if (icon != null) ...[
+                  Icon(icon, size: 20, color: AppColors.navySoft),
+                  const SizedBox(width: 8)
+                ],
+                Expanded(
+                    child: Text(title,
+                        style: Theme.of(context).textTheme.titleMedium)),
                 if (trailing != null) trailing!,
               ],
             ),

@@ -1,0 +1,21 @@
+{% extends "_base.html" %}
+{% block main %}
+<section class="card card-navy profile-header" aria-labelledby="player-name">
+  <p class="eyebrow">Player</p>
+  <h1 id="player-name">{{ player.name }}</h1>
+  <p class="muted-on-navy">
+    {{ player.position | upper }} · {{ player.role | replace("_", " ") | capitalize }}
+    {% if player.club_name %} · <a class="on-navy-link" href="/web/clubs/{{ player.club_id }}">{{ player.club_name }}</a>{% endif %}
+    {% if player.on_loan %} · On loan{% endif %}
+  </p>
+</section>
+<div class="watch-layout">
+  <div class="watch-main">
+    {% include "_fixture_list.html" %}
+  </div>
+  <aside class="watch-side">
+    {% include "_merch_cart.html" %}
+  </aside>
+</div>
+{% include "_auth_modal.html" %}
+{% endblock %}

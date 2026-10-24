@@ -31,7 +31,8 @@ class ClubScreen extends ConsumerWidget {
         onRetry: () => ref.invalidate(clubProvider(clubId)),
         data: (cached) {
           final club = cached.data;
-          final fixtures = (ref.watch(allFixturesProvider).valueOrNull ?? const [])
+          final fixtures = (ref.watch(allFixturesProvider).valueOrNull ??
+                  const [])
               .where((f) => f.homeTeamId == clubId || f.awayTeamId == clubId)
               .toList();
           final canManage = Permissions.canManageClub(user, clubId);
@@ -46,7 +47,10 @@ class ClubScreen extends ConsumerWidget {
             child: ListView(
               padding: const EdgeInsets.all(AppSpacing.lg),
               children: [
-                if (cached.fromCache) ...[CachedBanner(cachedAt: cached.cachedAt), const SizedBox(height: AppSpacing.md)],
+                if (cached.fromCache) ...[
+                  CachedBanner(cachedAt: cached.cachedAt),
+                  const SizedBox(height: AppSpacing.md)
+                ],
                 _Header(club: club),
                 if (canManage) ...[
                   const SizedBox(height: AppSpacing.md),
@@ -57,7 +61,8 @@ class ClubScreen extends ConsumerWidget {
                   ),
                 ],
                 const SizedBox(height: AppSpacing.md),
-                if (club.homeVenue != null || club.social.isNotEmpty) _VenueSocial(club: club),
+                if (club.homeVenue != null || club.social.isNotEmpty)
+                  _VenueSocial(club: club),
                 const SizedBox(height: AppSpacing.md),
                 SectionCard(
                   title: 'Roster (${club.roster.length})',
@@ -71,11 +76,16 @@ class ClubScreen extends ConsumerWidget {
                                 contentPadding: EdgeInsets.zero,
                                 leading: TeamAvatar(name: p.name, size: 36),
                                 title: Text(p.name),
-                                subtitle: Text('${p.position.toUpperCase()} · ${humanize(p.role)}'),
+                                subtitle: Text(
+                                    '${p.position.toUpperCase()} · ${humanize(p.role)}'),
                                 trailing: p.onLoan
-                                    ? const LabelBadge(icon: Icons.swap_horiz, text: 'On loan', color: AppColors.warning)
+                                    ? const LabelBadge(
+                                        icon: Icons.swap_horiz,
+                                        text: 'On loan',
+                                        color: AppColors.warning)
                                     : const Icon(Icons.chevron_right),
-                                onTap: () => context.push('/player/${Uri.encodeComponent(p.playerId)}'),
+                                onTap: () => context.push(
+                                    '/player/${Uri.encodeComponent(p.playerId)}'),
                               ),
                           ],
                         ),
@@ -109,7 +119,8 @@ class ClubScreen extends ConsumerWidget {
                           ListTile(
                             contentPadding: EdgeInsets.zero,
                             title: Text(s.season),
-                            subtitle: Text('Played ${s.played} · Won ${s.won} · Drawn ${s.drawn} · Lost ${s.lost}'),
+                            subtitle: Text(
+                                'Played ${s.played} · Won ${s.won} · Drawn ${s.drawn} · Lost ${s.lost}'),
                           ),
                       ],
                     ),
@@ -120,7 +131,8 @@ class ClubScreen extends ConsumerWidget {
                   title: 'Fixtures & results',
                   icon: Icons.event_note_outlined,
                   child: fixtures.isEmpty
-                      ? const Text('No fixtures found for this club in your leagues.')
+                      ? const Text(
+                          'No fixtures found for this club in your leagues.')
                       : Column(
                           children: [
                             for (final f in fixtures) ...[
@@ -147,7 +159,9 @@ class _Header extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       padding: const EdgeInsets.all(AppSpacing.xl),
-      decoration: BoxDecoration(color: AppColors.navy, borderRadius: BorderRadius.circular(AppSpacing.radius)),
+      decoration: BoxDecoration(
+          color: AppColors.navy,
+          borderRadius: BorderRadius.circular(AppSpacing.radius)),
       child: Row(
         children: [
           TeamAvatar(name: club.name, size: 64),
@@ -157,9 +171,11 @@ class _Header extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(club.name,
-                    style: Theme.of(context).textTheme.headlineSmall?.copyWith(color: Colors.white, fontWeight: FontWeight.w800)),
+                    style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                        color: Colors.white, fontWeight: FontWeight.w800)),
                 const SizedBox(height: AppSpacing.xs),
-                Text('${club.clubId} · ${club.tenantId}', style: const TextStyle(color: Colors.white70)),
+                Text('${club.clubId} · ${club.tenantId}',
+                    style: const TextStyle(color: Colors.white70)),
               ],
             ),
           ),
@@ -188,7 +204,8 @@ class _VenueSocial extends StatelessWidget {
               leading: const Icon(Icons.place_outlined),
               title: Text(venue.name),
               subtitle: venue.lat != null && venue.lng != null
-                  ? Text('${venue.lat!.toStringAsFixed(4)}, ${venue.lng!.toStringAsFixed(4)}')
+                  ? Text(
+                      '${venue.lat!.toStringAsFixed(4)}, ${venue.lng!.toStringAsFixed(4)}')
                   : null,
             ),
           if (club.social.isNotEmpty)
@@ -197,7 +214,9 @@ class _VenueSocial extends StatelessWidget {
               runSpacing: AppSpacing.sm,
               children: [
                 for (final e in club.social.entries)
-                  Chip(avatar: const Icon(Icons.alternate_email, size: 16), label: Text('${humanize(e.key)}: ${e.value}')),
+                  Chip(
+                      avatar: const Icon(Icons.alternate_email, size: 16),
+                      label: Text('${humanize(e.key)}: ${e.value}')),
               ],
             ),
         ],

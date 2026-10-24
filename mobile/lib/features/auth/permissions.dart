@@ -11,12 +11,15 @@ class Permissions {
   static bool canScore(AppUser? user, String? leagueId) {
     if (user == null) return false;
     if (user.role == UserRole.superAdmin) return true;
-    return user.role == UserRole.leagueOrganizer && leagueId != null && user.leagueId == leagueId;
+    return user.role == UserRole.leagueOrganizer &&
+        leagueId != null &&
+        user.leagueId == leagueId;
   }
 
   /// POST /api/v1/roster/transfer: super_admin; club_manager for own club's squads.
   static bool canManageRoster(AppUser? user) =>
-      user != null && (user.role == UserRole.superAdmin || user.role == UserRole.clubManager);
+      user != null &&
+      (user.role == UserRole.superAdmin || user.role == UserRole.clubManager);
 
   static bool canManageClub(AppUser? user, String clubId) {
     if (user == null) return false;
@@ -26,7 +29,8 @@ class Permissions {
 }
 
 class DashboardAction {
-  const DashboardAction(this.id, this.label, this.icon, this.route, {this.highlight = false});
+  const DashboardAction(this.id, this.label, this.icon, this.route,
+      {this.highlight = false});
   final String id;
   final String label;
   final IconData icon;
@@ -36,10 +40,14 @@ class DashboardAction {
 
 /// Quick actions per role. Pure so it can be unit tested.
 List<DashboardAction> dashboardActionsFor(AppUser user) {
-  const fixtures = DashboardAction('fixtures', 'Fixtures', Icons.event_note, '/fixtures');
-  const standings = DashboardAction('standings', 'Standings', Icons.leaderboard, '/standings');
+  const fixtures =
+      DashboardAction('fixtures', 'Fixtures', Icons.event_note, '/fixtures');
+  const standings = DashboardAction(
+      'standings', 'Standings', Icons.leaderboard, '/standings');
   const store = DashboardAction('store', 'Store', Icons.storefront, '/store');
   const sync = DashboardAction('sync', 'Sync status', Icons.sync, '/sync');
+  const scan =
+      DashboardAction('scan', 'Scan QR', Icons.qr_code_scanner, '/scan');
 
   switch (user.role) {
     case UserRole.superAdmin:
@@ -49,32 +57,46 @@ List<DashboardAction> dashboardActionsFor(AppUser user) {
         standings,
         store,
         sync,
+        scan,
       ];
     case UserRole.leagueOrganizer:
       return const [
-        DashboardAction('score', 'Score a match', Icons.scoreboard, '/fixtures?scoring=1', highlight: true),
+        DashboardAction(
+            'score', 'Score a match', Icons.scoreboard, '/fixtures?scoring=1',
+            highlight: true),
         fixtures,
         standings,
         sync,
+        scan,
       ];
     case UserRole.clubManager:
       return [
-        const DashboardAction('roster', 'Manage roster', Icons.groups, '/roster', highlight: true),
-        if (user.clubId != null) DashboardAction('club', 'My club', Icons.shield, '/club/${user.clubId}'),
+        const DashboardAction(
+            'roster', 'Manage roster', Icons.groups, '/roster',
+            highlight: true),
+        if (user.clubId != null)
+          DashboardAction(
+              'club', 'My club', Icons.shield, '/club/${user.clubId}'),
         fixtures,
         store,
         sync,
+        scan,
       ];
     case UserRole.player:
       return [
         if (user.playerId != null)
-          DashboardAction('me', 'My profile', Icons.person, '/player/${user.playerId}', highlight: true),
-        if (user.clubId != null) DashboardAction('club', 'My club', Icons.shield, '/club/${user.clubId}'),
+          DashboardAction(
+              'me', 'My profile', Icons.person, '/player/${user.playerId}',
+              highlight: true),
+        if (user.clubId != null)
+          DashboardAction(
+              'club', 'My club', Icons.shield, '/club/${user.clubId}'),
         fixtures,
         standings,
+        scan,
       ];
     case UserRole.viewer:
     case UserRole.unknown:
-      return const [fixtures, standings, store];
+      return const [fixtures, standings, store, scan];
   }
 }

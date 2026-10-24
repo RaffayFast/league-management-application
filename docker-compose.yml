@@ -7,6 +7,116 @@ services:
       - .:/app
     environment:
       - DAY1_SALT=${DAY1_SALT:-demo-salt}
+      - DAY2_SALT=${DAY2_SALT:-demo-salt}
+      - JWT_SECRET=${JWT_SECRET:-dev-jwt-secret}
       - HOST=0.0.0.0
       - PORT=8080
+      # Group 3: media server integration (internal API by service name, external URLs by public host)
+      - MEDIAMTX_API_URL=http://mediamtx:9997
+      - MEDIA_PUBLIC_HOST=${MEDIA_PUBLIC_HOST:-localhost}
+      - MEDIA_HLS_BASE_URL=http://${MEDIA_PUBLIC_HOST:-localhost}:8888
+      - MEDIA_HOOK_TOKEN=${MEDIA_HOOK_TOKEN:-dev-media-hook-token}
+      - MEDIA_INTERNAL_USER=${MEDIA_INTERNAL_USER:-compositor}
+      - MEDIA_INTERNAL_PASS=${MEDIA_INTERNAL_PASS:-dev-compositor-pass}
+      - HEALTH_CHECK_MEDIA=true
+      - DLQ_PATH=/app/data/nascon_dlq.sqlite3
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8080/health', timeout=3)"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+      start_period: 5s
     restart: always
+
+  # MediaMTX (Group 3): RTMP 1935, HLS 8888, WebRTC WHIP/WHEP 8889 (+8189/udp media). The Control API (9997)
+  # and RTSP (8554) stay on the compose network. The -ffmpeg image provides sh, wget and ffmpeg for the
+  # presence hooks and the on-demand co-stream compositor (media/compose.sh).
+  mediamtx:
+    image: bluenviron/mediamtx:1.9.1-ffmpeg
+    command: ["/media/mediamtx.yml"]
+    ports:
+      - "1935:1935"
+      - "8888:8888"
+      - "8889:8889"
+      - "8189:8189/udp"
+    volumes:
+      - ./media:/media:ro
+    environment:
+      - MTX_AUTHHTTPADDRESS=http://web:8080/internal/media/auth?token=${MEDIA_HOOK_TOKEN:-dev-media-hook-token}
+      - LEAGUEHUB_API=http://web:8080
+      - LEAGUEHUB_HOOK_TOKEN=${MEDIA_HOOK_TOKEN:-dev-media-hook-token}
+      - LEAGUEHUB_MEDIA_USER=${MEDIA_INTERNAL_USER:-compositor}
+      - LEAGUEHUB_MEDIA_PASS=${MEDIA_INTERNAL_PASS:-dev-compositor-pass}
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:9997/v3/paths/list"]
+      interval: 5s
+      timeout: 5s
+      retries: 24
+    restart: unless-stopped
+
+  # Selenium Grid 4 (Day 2 spec 6.2.1): hub on host 4444 plus 3 browser nodes. Browsers reach the
+  # backend inside this network at http://web:8080 (GUEST_BASE_URL in tests/selenium).
+  selenium-hub:
+    image: selenium/hub:4.25.0
+    container_name: nascon-selenium-hub
+    ports:
+      - "4444:4444"
+      - "4442:4442"
+      - "4443:4443"
+    healthcheck:
+      test: ["CMD", "curl", "-sf", "http://localhost:4444/status"]
+      interval: 5s
+      timeout: 5s
+      retries: 24
+    restart: unless-stopped
+  node-chrome-1:
+    image: selenium/node-chrome:4.25.0
+    shm_size: "1gb"
+    depends_on: [selenium-hub]
+    environment:
+      - SE_EVENT_BUS_HOST=selenium-hub
+      - SE_EVENT_BUS_PUBLISH_PORT=4442
+      - SE_EVENT_BUS_SUBSCRIBE_PORT=4443
+      - SE_NODE_MAX_SESSIONS=2
+      - SE_NODE_OVERRIDE_MAX_SESSIONS=true
+      - SE_START_VNC=false
+    restart: unless-stopped
+  node-chrome-2:
+    image: selenium/node-chrome:4.25.0
+    shm_size: "1gb"
+    depends_on: [selenium-hub]
+    environment:
+      - SE_EVENT_BUS_HOST=selenium-hub
+      - SE_EVENT_BUS_PUBLISH_PORT=4442
+      - SE_EVENT_BUS_SUBSCRIBE_PORT=4443
+      - SE_NODE_MAX_SESSIONS=2
+      - SE_NODE_OVERRIDE_MAX_SESSIONS=true
+      - SE_START_VNC=false
+    restart: unless-stopped
+  node-firefox:
+    image: selenium/node-firefox:4.25.0
+    shm_size: "1gb"
+    depends_on: [selenium-hub]
+    environment:
+      - SE_EVENT_BUS_HOST=selenium-hub
+      - SE_EVENT_BUS_PUBLISH_PORT=4442
+      - SE_EVENT_BUS_SUBSCRIBE_PORT=4443
+      - SE_NODE_MAX_SESSIONS=2
+      - SE_NODE_OVERRIDE_MAX_SESSIONS=true
+      - SE_START_VNC=false
+    restart: unless-stopped
+
+  # Appium 2 (Day 2 spec 6.3) for native deep-link tests. Opt-in: docker compose --profile mobile-qa up -d.
+  # It needs an Android device: on Linux pass the USB bus through, or set REMOTE_ADB with ANDROID_DEVICES.
+  # On the Windows desk laptop, run Appium on the host with the phone on USB instead (see README.md).
+  appium:
+    profiles: ["mobile-qa"]
+    image: appium/appium:v2.19.0-p4
+    ports:
+      - "4723:4723"
+    privileged: true
+    volumes:
+      - /dev/bus/usb:/dev/bus/usb
+    environment:
+      - RELAXED_SECURITY=true
+    restart: unless-stopped

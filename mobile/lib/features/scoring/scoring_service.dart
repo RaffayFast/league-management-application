@@ -45,15 +45,18 @@ class ScoringService {
   /// Posts when online. Throws ApiException for server rejections; callers
   /// may catch a connectivity error and call [queue] with the same body (same
   /// event_id), so a request that did reach the server is deduplicated on sync.
-  Future<ScoringOutcome> submit(Json body, {required int observedVersion, required String label}) async {
+  Future<ScoringOutcome> submit(Json body,
+      {required int observedVersion, required String label}) async {
     if (!_ref.read(syncControllerProvider).online) {
       return queue(body, observedVersion: observedVersion, label: label);
     }
-    final (ack, replay) = await _ref.read(leagueRepositoryProvider).postEvent(body);
+    final (ack, replay) =
+        await _ref.read(leagueRepositoryProvider).postEvent(body);
     return ScoringConfirmed(ack, replay: replay);
   }
 
-  Future<ScoringQueued> queue(Json body, {required int observedVersion, required String label}) async {
+  Future<ScoringQueued> queue(Json body,
+      {required int observedVersion, required String label}) async {
     final owner = _ref.read(authControllerProvider).user?.userId ?? 'unknown';
     final action = PendingAction.forScoreEvent(
       eventBody: body,

@@ -33,7 +33,8 @@ class PlayerScreen extends ConsumerWidget {
         onRetry: () => ref.invalidate(rosterHistoryProvider(playerId)),
         data: (cached) {
           final history = cached.data;
-          final roster = ref.watch(rosterProvider(history.leagueId)).valueOrNull?.data;
+          final roster =
+              ref.watch(rosterProvider(history.leagueId)).valueOrNull?.data;
           SquadPlayer? player;
           Squad? squad;
           for (final s in roster?.squads ?? const <Squad>[]) {
@@ -44,14 +45,19 @@ class PlayerScreen extends ConsumerWidget {
               }
             }
           }
-          String squadName(String? id) => roster?.squad(id)?.name ?? id ?? 'No squad';
+          String squadName(String? id) =>
+              roster?.squad(id)?.name ?? id ?? 'No squad';
           final canManage = Permissions.canManageRoster(user) &&
-              (user!.role == UserRole.superAdmin || squad?.clubId == user.clubId);
+              (user!.role == UserRole.superAdmin ||
+                  squad?.clubId == user.clubId);
 
           return ListView(
             padding: const EdgeInsets.all(AppSpacing.lg),
             children: [
-              if (cached.fromCache) ...[CachedBanner(cachedAt: cached.cachedAt), const SizedBox(height: AppSpacing.md)],
+              if (cached.fromCache) ...[
+                CachedBanner(cachedAt: cached.cachedAt),
+                const SizedBox(height: AppSpacing.md)
+              ],
               Card(
                 child: Padding(
                   padding: const EdgeInsets.all(AppSpacing.lg),
@@ -63,20 +69,27 @@ class PlayerScreen extends ConsumerWidget {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text(player?.name ?? playerId, style: Theme.of(context).textTheme.titleLarge),
+                            Text(player?.name ?? playerId,
+                                style: Theme.of(context).textTheme.titleLarge),
                             if (player != null)
-                              Text('${player.position.toUpperCase()} · ${humanize(player.role)}',
-                                  style: const TextStyle(color: AppColors.textMuted)),
+                              Text(
+                                  '${player.position.toUpperCase()} · ${humanize(player.role)}',
+                                  style: const TextStyle(
+                                      color: AppColors.textMuted)),
                             const SizedBox(height: AppSpacing.sm),
                             Wrap(
                               spacing: AppSpacing.sm,
                               runSpacing: AppSpacing.xs,
                               children: [
-                                LabelBadge(icon: Icons.shield_outlined, text: squadName(history.currentSquadId), color: AppColors.navySoft),
+                                LabelBadge(
+                                    icon: Icons.shield_outlined,
+                                    text: squadName(history.currentSquadId),
+                                    color: AppColors.navySoft),
                                 if (history.parentSquadId != null)
                                   LabelBadge(
                                     icon: Icons.swap_horiz,
-                                    text: 'On loan from ${squadName(history.parentSquadId)}',
+                                    text:
+                                        'On loan from ${squadName(history.parentSquadId)}',
                                     color: AppColors.warning,
                                   ),
                               ],
@@ -96,7 +109,8 @@ class PlayerScreen extends ConsumerWidget {
                     title: Text(squad.name),
                     subtitle: const Text('Open club profile'),
                     trailing: const Icon(Icons.chevron_right),
-                    onTap: () => context.push('/club/${Uri.encodeComponent(squad!.clubId)}'),
+                    onTap: () => context
+                        .push('/club/${Uri.encodeComponent(squad!.clubId)}'),
                   ),
                 ),
               ],

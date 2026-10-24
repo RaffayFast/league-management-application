@@ -22,7 +22,8 @@ class AuthState {
   AppUser? get user => session?.user;
 }
 
-final authControllerProvider = StateNotifierProvider<AuthController, AuthState>((ref) => AuthController(ref));
+final authControllerProvider = StateNotifierProvider<AuthController, AuthState>(
+    (ref) => AuthController(ref));
 
 /// Real authentication against POST /api/v1/auth/login; session restored from
 /// secure storage on start-up so cached screens work offline.
@@ -41,7 +42,8 @@ class AuthController extends StateNotifier<AuthState> {
     }
     if (session.isExpired) {
       await _ref.read(secureStoreProvider).clear();
-      state = const AuthState(AuthStatus.signedOut, message: 'Your session expired. Please sign in again.');
+      state = const AuthState(AuthStatus.signedOut,
+          message: 'Your session expired. Please sign in again.');
       return;
     }
     _ref.read(tokenHolderProvider).token = session.token;
@@ -58,8 +60,11 @@ class AuthController extends StateNotifier<AuthState> {
     try {
       final data = await _ref.read(apiClientProvider).get('/api/v1/me');
       if (data is! Map) return;
-      final user = AppUser.fromJson(Map<String, dynamic>.from(data['user'] as Map));
-      final tenant = data['tenant'] is Map ? Tenant.fromJson(Map<String, dynamic>.from(data['tenant'] as Map)) : null;
+      final user =
+          AppUser.fromJson(Map<String, dynamic>.from(data['user'] as Map));
+      final tenant = data['tenant'] is Map
+          ? Tenant.fromJson(Map<String, dynamic>.from(data['tenant'] as Map))
+          : null;
       final updated = session.copyWith(user: user, tenant: tenant);
       await _ref.read(secureStoreProvider).saveSession(updated);
       if (mounted && state.status == AuthStatus.signedIn) {
@@ -80,7 +85,30 @@ class AuthController extends StateNotifier<AuthState> {
           body: {'email': email.trim(), 'password': password},
           auth: false,
         );
-    final login = parseOrThrow(response.data, LoginResponse.fromJson, 'login response');
+    await _establish(response.data, 'login response');
+  }
+
+  /// Creates a viewer account (POST /api/v1/auth/register, 201) and signs it in. The response has
+  /// the same shape as login. Throws [ApiException]: 409 USER_EXISTS, 400 VALIDATION_ERROR.
+  Future<void> register(
+      {required String name,
+      required String email,
+      required String password}) async {
+    final response = await _ref.read(apiClientProvider).send(
+          'POST',
+          '/api/v1/auth/register',
+          body: {
+            'name': name.trim(),
+            'email': email.trim(),
+            'password': password
+          },
+          auth: false,
+        );
+    await _establish(response.data, 'registration response');
+  }
+
+  Future<void> _establish(dynamic data, String what) async {
+    final login = parseOrThrow(data, LoginResponse.fromJson, what);
     final session = Session(
       token: login.token,
       user: login.user,

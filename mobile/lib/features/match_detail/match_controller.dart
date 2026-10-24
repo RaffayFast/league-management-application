@@ -43,7 +43,8 @@ class MatchController extends StateNotifier<AsyncValue<Cached<ScoreObject>>> {
       if (e.code == 'RATE_LIMITED') {
         final hinted = e.retryAfterSeconds;
         _interval = hinted != null
-            ? Duration(seconds: math.max(hinted, AppConfig.livePollInterval.inSeconds))
+            ? Duration(
+                seconds: math.max(hinted, AppConfig.livePollInterval.inSeconds))
             : _backoff();
       } else {
         _interval = _backoff();
@@ -60,7 +61,9 @@ class MatchController extends StateNotifier<AsyncValue<Cached<ScoreObject>>> {
 
   Duration _backoff() {
     final doubled = _interval * 2;
-    return doubled > AppConfig.maxPollInterval ? AppConfig.maxPollInterval : doubled;
+    return doubled > AppConfig.maxPollInterval
+        ? AppConfig.maxPollInterval
+        : doubled;
   }
 
   void _schedule() {
@@ -83,10 +86,12 @@ class MatchController extends StateNotifier<AsyncValue<Cached<ScoreObject>>> {
 }
 
 final matchControllerProvider = StateNotifierProvider.autoDispose
-    .family<MatchController, AsyncValue<Cached<ScoreObject>>, String>((ref, id) => MatchController(ref, id));
+    .family<MatchController, AsyncValue<Cached<ScoreObject>>, String>(
+        (ref, id) => MatchController(ref, id));
 
 /// Locally queued (not yet confirmed) actions for a match or player.
-final pendingForTargetProvider = FutureProvider.autoDispose.family<List<PendingAction>, String>((ref, target) async {
+final pendingForTargetProvider = FutureProvider.autoDispose
+    .family<List<PendingAction>, String>((ref, target) async {
   ref.watch(syncControllerProvider.select((s) => s.pending + s.rejected));
   final all = await ref.watch(actionQueueProvider).all();
   return all.where((a) => a.target == target).toList();

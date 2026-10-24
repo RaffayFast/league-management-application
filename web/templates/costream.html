@@ -1,0 +1,28 @@
+{% extends "_base.html" %}
+{% block main %}
+<section class="card card-navy match-header" aria-labelledby="costream-title">
+  <p class="eyebrow">Co-stream</p>
+  <h1 id="costream-title" class="match-title">
+    {% if linked %}
+    <span class="team" data-team-home>{{ linked.snapshot.home.name }}</span>
+    <span class="vs">vs</span>
+    <span class="team" data-team-away>{{ linked.snapshot.away.name }}</span>
+    {% else %}
+    <span class="team">{{ session.layout | default("Multi-host", true) | replace("_", " ") | capitalize }} broadcast</span>
+    {% endif %}
+  </h1>
+  <div class="score-row">
+    {% if linked %}
+    <div class="scoreline" data-testid="live-score-banner" role="status" aria-live="polite" aria-atomic="true"><span data-score-home>{{ linked.snapshot.home.score }}</span> - <span data-score-away>{{ linked.snapshot.away.score }}</span></div>
+    {% else %}
+    <div class="scoreline scoreline-text" data-testid="live-score-banner" role="status" aria-live="polite">LIVE</div>
+    {% endif %}
+    <span class="status-pill" data-match-status>{% if session.status %}{{ session.status | capitalize }}{% else %}Waiting for hosts{% endif %}</span>
+  </div>
+  {% if session.active_host %}
+  <p class="muted-on-navy">Host: {{ session.active_host }}{% if session.participant_count %} · {{ session.participant_count }} on stream{% endif %}</p>
+  {% endif %}
+</section>
+{% include "_watch_panel.html" %}
+{% include "_auth_modal.html" %}
+{% endblock %}

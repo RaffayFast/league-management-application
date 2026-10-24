@@ -21,7 +21,8 @@ class LocalDb {
   }
 
   static Future<void> _create(Database db, int version) async {
-    await db.execute('CREATE TABLE kv (key TEXT PRIMARY KEY, value TEXT NOT NULL)');
+    await db
+        .execute('CREATE TABLE kv (key TEXT PRIMARY KEY, value TEXT NOT NULL)');
     await db.execute(
       'CREATE TABLE cache (key TEXT PRIMARY KEY, json TEXT NOT NULL, updated_at TEXT NOT NULL)',
     );
@@ -57,12 +58,14 @@ class LocalDb {
   }
 
   Future<String?> getValue(String key) async {
-    final rows = await db.query('kv', where: 'key = ?', whereArgs: [key], limit: 1);
+    final rows =
+        await db.query('kv', where: 'key = ?', whereArgs: [key], limit: 1);
     return rows.isEmpty ? null : rows.first['value'] as String;
   }
 
   Future<void> setValue(String key, String value) =>
-      db.insert('kv', {'key': key, 'value': value}, conflictAlgorithm: ConflictAlgorithm.replace);
+      db.insert('kv', {'key': key, 'value': value},
+          conflictAlgorithm: ConflictAlgorithm.replace);
 
   Future<void> close() => db.close();
 }

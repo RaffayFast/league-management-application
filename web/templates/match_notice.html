@@ -1,0 +1,11 @@
+{% extends "_base.html" %}
+{% block main %}
+{% include "_match_header.html" %}
+<section class="card notice-card notice-{{ notice_state }}" aria-labelledby="notice-title">
+  <h2 id="notice-title">Match update</h2>
+  <p class="notice-text">{{ notice_text }}</p>
+  {% if snapshot.web_route != "/web/matches/" ~ match_id ~ "/notice?state=" ~ notice_state %}
+  <p><a class="btn btn-navy" href="{{ snapshot.web_route }}">Open the match page</a></p>
+  {% endif %}
+</section>
+{% endblock %}

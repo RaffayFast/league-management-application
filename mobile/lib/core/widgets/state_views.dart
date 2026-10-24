@@ -59,14 +59,22 @@ class MessageView extends StatelessWidget {
           children: [
             Icon(icon, size: 48, color: AppColors.textMuted),
             const SizedBox(height: AppSpacing.md),
-            Text(title, style: theme.textTheme.titleMedium, textAlign: TextAlign.center),
+            Text(title,
+                style: theme.textTheme.titleMedium,
+                textAlign: TextAlign.center),
             if (message != null) ...[
               const SizedBox(height: AppSpacing.sm),
-              Text(message!, style: theme.textTheme.bodyMedium?.copyWith(color: AppColors.textMuted), textAlign: TextAlign.center),
+              Text(message!,
+                  style: theme.textTheme.bodyMedium
+                      ?.copyWith(color: AppColors.textMuted),
+                  textAlign: TextAlign.center),
             ],
             if (onAction != null) ...[
               const SizedBox(height: AppSpacing.lg),
-              FilledButton.icon(onPressed: onAction, icon: const Icon(Icons.refresh), label: Text(actionLabel ?? 'Try again')),
+              FilledButton.icon(
+                  onPressed: onAction,
+                  icon: const Icon(Icons.refresh),
+                  label: Text(actionLabel ?? 'Try again')),
             ],
           ],
         ),
@@ -90,13 +98,18 @@ class ErrorView extends StatelessWidget {
 }
 
 class EmptyView extends StatelessWidget {
-  const EmptyView({super.key, required this.title, this.message, this.icon = Icons.inbox_outlined});
+  const EmptyView(
+      {super.key,
+      required this.title,
+      this.message,
+      this.icon = Icons.inbox_outlined});
   final String title;
   final String? message;
   final IconData icon;
 
   @override
-  Widget build(BuildContext context) => MessageView(icon: icon, title: title, message: message);
+  Widget build(BuildContext context) =>
+      MessageView(icon: icon, title: title, message: message);
 }
 
 /// Labels data served from the SQLite cache as possibly stale.
@@ -112,7 +125,8 @@ class CachedBanner extends StatelessWidget {
       child: Container(
         width: double.infinity,
         color: const Color(0xFFFFF1D6),
-        padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg, vertical: AppSpacing.sm),
+        padding: const EdgeInsets.symmetric(
+            horizontal: AppSpacing.lg, vertical: AppSpacing.sm),
         child: Row(
           children: [
             const Icon(Icons.history, size: 18, color: AppColors.warning),
@@ -120,7 +134,8 @@ class CachedBanner extends StatelessWidget {
             Expanded(
               child: Text(
                 'Offline copy$age — may be out of date',
-                style: const TextStyle(color: AppColors.warning, fontWeight: FontWeight.w600),
+                style: const TextStyle(
+                    color: AppColors.warning, fontWeight: FontWeight.w600),
               ),
             ),
           ],
@@ -132,7 +147,12 @@ class CachedBanner extends StatelessWidget {
 
 /// AsyncValue switch with consistent loading / error UI.
 class AsyncBody<T> extends StatelessWidget {
-  const AsyncBody({super.key, required this.value, required this.data, this.onRetry, this.skeletonCount = 5});
+  const AsyncBody(
+      {super.key,
+      required this.value,
+      required this.data,
+      this.onRetry,
+      this.skeletonCount = 5});
 
   final AsyncValue<T> value;
   final Widget Function(T data) data;

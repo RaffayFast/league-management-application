@@ -5,7 +5,12 @@ import '../theme/app_theme.dart';
 
 /// Icon + text pill; colour is decoration only.
 class LabelBadge extends StatelessWidget {
-  const LabelBadge({super.key, required this.icon, required this.text, required this.color, this.background});
+  const LabelBadge(
+      {super.key,
+      required this.icon,
+      required this.text,
+      required this.color,
+      this.background});
 
   final IconData icon;
   final String text;
@@ -25,7 +30,9 @@ class LabelBadge extends StatelessWidget {
         children: [
           Icon(icon, size: 14, color: color),
           const SizedBox(width: 4),
-          Text(text, style: TextStyle(color: color, fontSize: 12, fontWeight: FontWeight.w700)),
+          Text(text,
+              style: TextStyle(
+                  color: color, fontSize: 12, fontWeight: FontWeight.w700)),
         ],
       ),
     );
@@ -41,10 +48,16 @@ class MatchStatusBadge extends StatelessWidget {
   Widget build(BuildContext context) {
     final label = matchStatusLabel(status, raw);
     return switch (status) {
-      MatchStatus.inProgress => LabelBadge(icon: Icons.circle, text: label, color: AppColors.live),
-      MatchStatus.completed => LabelBadge(icon: Icons.flag, text: label, color: AppColors.navySoft),
-      MatchStatus.upcoming => LabelBadge(icon: Icons.schedule, text: label, color: AppColors.info),
-      _ => LabelBadge(icon: Icons.pause_circle_outline, text: label, color: AppColors.warning),
+      MatchStatus.inProgress =>
+        LabelBadge(icon: Icons.circle, text: label, color: AppColors.live),
+      MatchStatus.completed =>
+        LabelBadge(icon: Icons.flag, text: label, color: AppColors.navySoft),
+      MatchStatus.upcoming =>
+        LabelBadge(icon: Icons.schedule, text: label, color: AppColors.info),
+      _ => LabelBadge(
+          icon: Icons.pause_circle_outline,
+          text: label,
+          color: AppColors.warning),
     };
   }
 }
@@ -55,14 +68,18 @@ class QualificationBadge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => switch (status) {
-        QualificationStatus.clinched =>
-          const LabelBadge(icon: Icons.verified, text: 'Clinched', color: AppColors.success),
-        QualificationStatus.eliminated =>
-          const LabelBadge(icon: Icons.block, text: 'Eliminated', color: AppColors.danger),
-        QualificationStatus.stillPossible =>
-          const LabelBadge(icon: Icons.trending_up, text: 'Still possible', color: AppColors.info),
-        QualificationStatus.unknown =>
-          const LabelBadge(icon: Icons.help_outline, text: 'Unknown', color: AppColors.textMuted),
+        QualificationStatus.clinched => const LabelBadge(
+            icon: Icons.verified, text: 'Clinched', color: AppColors.success),
+        QualificationStatus.eliminated => const LabelBadge(
+            icon: Icons.block, text: 'Eliminated', color: AppColors.danger),
+        QualificationStatus.stillPossible => const LabelBadge(
+            icon: Icons.trending_up,
+            text: 'Still possible',
+            color: AppColors.info),
+        QualificationStatus.unknown => const LabelBadge(
+            icon: Icons.help_outline,
+            text: 'Unknown',
+            color: AppColors.textMuted),
       };
 }
 
@@ -74,11 +91,14 @@ class TeamAvatar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final words = name.trim().split(RegExp(r'\s+')).where((w) => w.isNotEmpty).toList();
+    final words =
+        name.trim().split(RegExp(r'\s+')).where((w) => w.isNotEmpty).toList();
     final initials = words.isEmpty
         ? '?'
         : words.length == 1
-            ? words.first.substring(0, words.first.length >= 2 ? 2 : 1).toUpperCase()
+            ? words.first
+                .substring(0, words.first.length >= 2 ? 2 : 1)
+                .toUpperCase()
             : (words[0][0] + words[1][0]).toUpperCase();
     return ExcludeSemantics(
       child: CircleAvatar(
@@ -86,7 +106,10 @@ class TeamAvatar extends StatelessWidget {
         backgroundColor: AppColors.navy,
         child: Text(
           initials,
-          style: TextStyle(color: AppColors.lime, fontWeight: FontWeight.w800, fontSize: size * 0.36),
+          style: TextStyle(
+              color: AppColors.lime,
+              fontWeight: FontWeight.w800,
+              fontSize: size * 0.36),
         ),
       ),
     );

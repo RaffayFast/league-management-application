@@ -1,0 +1,26 @@
+{% if offer %}
+<section class="card merch-card" data-testid="pinned-merch-card" aria-labelledby="merch-title">
+  <div class="merch-art" aria-hidden="true">
+    <svg viewBox="0 0 64 64" width="56" height="56" focusable="false"><path d="M22 8l-14 8 5 12 6-3v31h26V25l6 3 5-12-14-8c-2 4-6 6-10 6s-8-2-10-6z" fill="currentColor"/></svg>
+    {% if offer.size %}<span class="merch-size">{{ offer.size }}</span>{% endif %}
+  </div>
+  <div class="merch-body">
+    <p class="eyebrow eyebrow-deep">{{ merch_label | default("Pinned merch") }}</p>
+    <h2 id="merch-title" class="merch-title">{{ offer.name }}</h2>
+    <p class="merch-meta">{{ offer.label }}{% if offer.color %} · {{ offer.color | capitalize }}{% endif %}</p>
+    <p class="merch-price">{{ offer.price_text }}</p>
+    <button type="button" class="btn btn-lime" data-testid="add-to-guest-cart-btn"
+            data-variant-id="{{ offer.variant_id }}" data-product-id="{{ offer.product_id }}"
+            {% if not offer.in_stock %}disabled{% endif %}>{% if offer.in_stock %}Add to cart{% else %}Sold out{% endif %}</button>
+  </div>
+</section>
+{% endif %}
+<section class="card cart-bar" aria-labelledby="cart-title">
+  <h2 id="cart-title" class="sr-only">Your cart</h2>
+  <p class="cart-summary">
+    <svg class="cart-icon" viewBox="0 0 24 24" width="24" height="24" aria-hidden="true" focusable="false"><path d="M3 4h2l2.4 10.2a2 2 0 0 0 2 1.6h7.7a2 2 0 0 0 1.9-1.4L21 8H6.2" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><circle cx="10" cy="19.5" r="1.5" fill="currentColor"/><circle cx="17" cy="19.5" r="1.5" fill="currentColor"/></svg>
+    <span class="cart-count" data-testid="guest-cart-count">0</span>
+    <span class="cart-unit">in cart</span>
+  </p>
+  <button type="button" class="btn btn-navy" id="checkout-btn">Proceed to checkout</button>
+</section>

@@ -9,8 +9,10 @@ import '../../core/widgets/state_views.dart';
 import '../auth/auth_controller.dart';
 import 'data/store_repository.dart';
 
-final _receiptsProvider = FutureProvider.autoDispose<List<StoredReceipt>>((ref) {
-  final userId = ref.watch(authControllerProvider.select((a) => a.user?.userId));
+final _receiptsProvider =
+    FutureProvider.autoDispose<List<StoredReceipt>>((ref) {
+  final userId =
+      ref.watch(authControllerProvider.select((a) => a.user?.userId));
   if (userId == null) return Future.value(const []);
   return ref.watch(storeRepositoryProvider).receipts(userId);
 });
@@ -28,23 +30,28 @@ class ReceiptsScreen extends ConsumerWidget {
         data: (receipts) => receipts.isEmpty
             ? const EmptyView(
                 title: 'No receipts yet',
-                message: 'Receipts from purchases made on this device appear here.',
+                message:
+                    'Receipts from purchases made on this device appear here.',
                 icon: Icons.receipt_long_outlined,
               )
             : ListView.separated(
                 padding: const EdgeInsets.all(AppSpacing.lg),
                 itemCount: receipts.length,
-                separatorBuilder: (_, __) => const SizedBox(height: AppSpacing.sm),
+                separatorBuilder: (_, __) =>
+                    const SizedBox(height: AppSpacing.sm),
                 itemBuilder: (_, i) {
                   final o = receipts[i].order;
                   return Card(
                     child: ListTile(
                       leading: const Icon(Icons.receipt_long),
-                      title: Text(formatMoney(o.totalMinor, o.currency), style: const TextStyle(fontWeight: FontWeight.w800)),
-                      subtitle: Text('${o.orderId}\n${formatDateTime(o.receipt.payload.paidAt)}'),
+                      title: Text(formatMoney(o.totalMinor, o.currency),
+                          style: const TextStyle(fontWeight: FontWeight.w800)),
+                      subtitle: Text(
+                          '${o.orderId}\n${formatDateTime(o.receipt.payload.paidAt)}'),
                       isThreeLine: true,
                       trailing: const Icon(Icons.chevron_right),
-                      onTap: () => context.push('/receipt/${Uri.encodeComponent(o.orderId)}'),
+                      onTap: () => context
+                          .push('/receipt/${Uri.encodeComponent(o.orderId)}'),
                     ),
                   );
                 },

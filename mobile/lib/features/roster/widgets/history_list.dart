@@ -7,7 +7,8 @@ import '../../../core/widgets/badges.dart';
 
 /// Immutable audit trail from GET /api/v1/roster/history/{player_id}.
 class HistoryList extends StatelessWidget {
-  const HistoryList({super.key, required this.history, required this.squadName});
+  const HistoryList(
+      {super.key, required this.history, required this.squadName});
 
   final RosterHistory history;
   final String Function(String?) squadName;
@@ -21,7 +22,8 @@ class HistoryList extends StatelessWidget {
 
     // The server reports the squad as of `as_of`; a loan that has ended shows
     // the player back at the lending squad with no parent.
-    final lastLoan = history.history.where((e) => e.action == 'loan').lastOrNull;
+    final lastLoan =
+        history.history.where((e) => e.action == 'loan').lastOrNull;
     final loanReturned = lastLoan != null &&
         history.parentSquadId == null &&
         history.currentSquadId == lastLoan.fromSquadId;
@@ -55,8 +57,10 @@ class HistoryList extends StatelessWidget {
             ),
             title: Text(switch (e.action) {
               'release' => 'Released from ${squadName(e.fromSquadId)}',
-              'loan' => 'Loaned ${squadName(e.fromSquadId)} → ${squadName(e.toSquadId)}',
-              _ => 'Transferred ${squadName(e.fromSquadId)} → ${squadName(e.toSquadId)}',
+              'loan' =>
+                'Loaned ${squadName(e.fromSquadId)} → ${squadName(e.toSquadId)}',
+              _ =>
+                'Transferred ${squadName(e.fromSquadId)} → ${squadName(e.toSquadId)}',
             }),
             subtitle: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -66,7 +70,10 @@ class HistoryList extends StatelessWidget {
                 if (e.state == 'deferred_until_match_end')
                   const Padding(
                     padding: EdgeInsets.only(top: 4),
-                    child: LabelBadge(icon: Icons.hourglass_top, text: 'Waits for match end', color: AppColors.warning),
+                    child: LabelBadge(
+                        icon: Icons.hourglass_top,
+                        text: 'Waits for match end',
+                        color: AppColors.warning),
                   ),
               ],
             ),

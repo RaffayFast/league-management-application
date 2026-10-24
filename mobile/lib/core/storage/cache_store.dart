@@ -18,12 +18,17 @@ class CacheStore {
 
   Future<void> put(String key, dynamic json) => _db.db.insert(
         'cache',
-        {'key': key, 'json': jsonEncode(json), 'updated_at': DateTime.now().toUtc().toIso8601String()},
+        {
+          'key': key,
+          'json': jsonEncode(json),
+          'updated_at': DateTime.now().toUtc().toIso8601String()
+        },
         conflictAlgorithm: ConflictAlgorithm.replace,
       );
 
   Future<CachedEntry?> get(String key) async {
-    final rows = await _db.db.query('cache', where: 'key = ?', whereArgs: [key], limit: 1);
+    final rows = await _db.db
+        .query('cache', where: 'key = ?', whereArgs: [key], limit: 1);
     if (rows.isEmpty) return null;
     try {
       return CachedEntry(

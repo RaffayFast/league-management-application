@@ -7,7 +7,8 @@ class AppColors {
   static const navy = Color(0xFF0E1B3D);
   static const navySoft = Color(0xFF1F2E57);
   static const lime = Color(0xFFB6F03C);
-  static const limeDeep = Color(0xFF4F7A00); // lime that passes contrast on white
+  static const limeDeep =
+      Color(0xFF4F7A00); // lime that passes contrast on white
   static const background = Color(0xFFF5F6F8);
   static const surface = Colors.white;
   static const border = Color(0xFFE2E5EB);

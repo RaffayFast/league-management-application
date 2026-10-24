@@ -10,7 +10,8 @@ import '../models/json.dart';
 class SecureStore {
   SecureStore([FlutterSecureStorage? storage])
       : _storage = storage ??
-            const FlutterSecureStorage(aOptions: AndroidOptions(encryptedSharedPreferences: true));
+            const FlutterSecureStorage(
+                aOptions: AndroidOptions(encryptedSharedPreferences: true));
 
   final FlutterSecureStorage _storage;
   static const _sessionKey = 'leaguehub.session';

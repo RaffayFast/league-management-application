@@ -21,7 +21,11 @@ import 'data/roster_repository.dart';
 import 'transfer_service.dart';
 
 class TransferFormScreen extends ConsumerStatefulWidget {
-  const TransferFormScreen({super.key, required this.leagueId, this.initialPlayerId, this.initialType});
+  const TransferFormScreen(
+      {super.key,
+      required this.leagueId,
+      this.initialPlayerId,
+      this.initialType});
 
   final String leagueId;
   final String? initialPlayerId;
@@ -48,7 +52,8 @@ class _TransferFormScreenState extends ConsumerState<TransferFormScreen> {
   @override
   void initState() {
     super.initState();
-    _type = TransferType.values.firstWhere((t) => t.name == widget.initialType, orElse: () => TransferType.transfer);
+    _type = TransferType.values.firstWhere((t) => t.name == widget.initialType,
+        orElse: () => TransferType.transfer);
     _playerId = widget.initialPlayerId;
     _effectiveDate = isoDate(DateTime.now());
   }
@@ -59,21 +64,25 @@ class _TransferFormScreenState extends ConsumerState<TransferFormScreen> {
     super.dispose();
   }
 
-  Future<String?> _pickDate(String? current, {String? first, String? last}) async {
+  Future<String?> _pickDate(String? current,
+      {String? first, String? last}) async {
     final now = DateTime.now();
     final initial = DateTime.tryParse(current ?? '') ?? now;
     final firstDate = DateTime.tryParse(first ?? '') ?? DateTime(now.year - 1);
     final lastDate = DateTime.tryParse(last ?? '') ?? DateTime(now.year + 2);
     final picked = await showDatePicker(
       context: context,
-      initialDate: initial.isBefore(firstDate) ? firstDate : (initial.isAfter(lastDate) ? lastDate : initial),
+      initialDate: initial.isBefore(firstDate)
+          ? firstDate
+          : (initial.isAfter(lastDate) ? lastDate : initial),
       firstDate: firstDate,
       lastDate: lastDate,
     );
     return picked == null ? null : isoDate(picked);
   }
 
-  Future<void> _submit(RosterResponse roster, AppUser user, SquadPlayer? player, Squad? fromSquad) async {
+  Future<void> _submit(RosterResponse roster, AppUser user, SquadPlayer? player,
+      Squad? fromSquad) async {
     setState(() {
       _serverError = null;
       _errors = validateTransferForm(
@@ -91,11 +100,13 @@ class _TransferFormScreenState extends ConsumerState<TransferFormScreen> {
 
     final toName = roster.squad(_toSquadId)?.name ?? _toSquadId;
     final summary = switch (_type) {
-      TransferType.transfer => 'Transfer ${player.name} from ${fromSquad.name} to $toName, effective ${formatDate(_effectiveDate)}?',
+      TransferType.transfer =>
+        'Transfer ${player.name} from ${fromSquad.name} to $toName, effective ${formatDate(_effectiveDate)}?',
       TransferType.loan =>
         'Loan ${player.name} from ${fromSquad.name} to $toName from ${formatDate(_effectiveDate)} until ${formatDate(_loanEndDate)}?',
-      TransferType.release => 'Release ${player.name} from ${fromSquad.name}, effective ${formatDate(_effectiveDate)}? '
-          'The player will no longer be registered to any squad.',
+      TransferType.release =>
+        'Release ${player.name} from ${fromSquad.name}, effective ${formatDate(_effectiveDate)}? '
+            'The player will no longer be registered to any squad.',
     };
     final ok = await confirmAction(
       context,
@@ -133,10 +144,14 @@ class _TransferFormScreenState extends ConsumerState<TransferFormScreen> {
         final queue = await confirmAction(
           context,
           title: 'Server unreachable',
-          message: '${friendlyError(e)}\n\nSave this ${_type.name} on the device and send it when you reconnect?',
+          message:
+              '${friendlyError(e)}\n\nSave this ${_type.name} on the device and send it when you reconnect?',
           confirmLabel: 'Save offline',
         );
-        if (queue && mounted) _afterSuccess(await service.queue(request, label: label), roster, player.name);
+        if (queue && mounted) {
+          _afterSuccess(
+              await service.queue(request, label: label), roster, player.name);
+        }
       } else {
         setState(() => _serverError = friendlyError(e));
       }
@@ -145,23 +160,29 @@ class _TransferFormScreenState extends ConsumerState<TransferFormScreen> {
     }
   }
 
-  void _afterSuccess(TransferOutcome outcome, RosterResponse roster, String playerName) {
+  void _afterSuccess(
+      TransferOutcome outcome, RosterResponse roster, String playerName) {
     ref.read(refreshTickProvider.notifier).state++;
     showDialog<void>(
       context: context,
       builder: (ctx) => AlertDialog(
         icon: Icon(
-          outcome is TransferQueued ? Icons.cloud_upload_outlined : Icons.check_circle,
-          color: outcome is TransferQueued ? AppColors.warning : AppColors.success,
+          outcome is TransferQueued
+              ? Icons.cloud_upload_outlined
+              : Icons.check_circle,
+          color:
+              outcome is TransferQueued ? AppColors.warning : AppColors.success,
           size: 40,
         ),
         title: Text(switch (outcome) {
-          TransferConfirmed(:final response) when response.isDeferred => 'Accepted — waiting for match end',
+          TransferConfirmed(:final response) when response.isDeferred =>
+            'Accepted — waiting for match end',
           TransferConfirmed() => 'Done',
           TransferQueued() => 'Saved on this device',
         }),
         content: Text(switch (outcome) {
-          TransferConfirmed(:final response, :final replay) when response.isDeferred =>
+          TransferConfirmed(:final response, :final replay)
+              when response.isDeferred =>
             'The server accepted the ${_type.name} of $playerName, but a squad involved is playing match '
                 '${response.blockingMatchId}. The move takes effect automatically when that match ends.'
                 '${replay ? '\n\n(This request had already been received.)' : ''}',
@@ -170,8 +191,9 @@ class _TransferFormScreenState extends ConsumerState<TransferFormScreen> {
                 '${response.registration?.parentSquadId != null ? ' on loan from ${roster.squad(response.registration!.parentSquadId)?.name ?? response.registration!.parentSquadId}' : ''}.'
                 '${response.auditEntry != null ? '\nAudit ref ${response.auditEntry!.auditId}.' : ''}'
                 '${replay ? '\n\n(This request had already been received.)' : ''}',
-          TransferQueued() => 'You are offline. The ${_type.name} is queued and will be sent automatically when you reconnect. '
-              'The server will make the final decision — check Sync status for the result.',
+          TransferQueued() =>
+            'You are offline. The ${_type.name} is queued and will be sent automatically when you reconnect. '
+                'The server will make the final decision — check Sync status for the result.',
         }),
         actions: [
           FilledButton(
@@ -206,16 +228,25 @@ class _TransferFormScreenState extends ConsumerState<TransferFormScreen> {
             for (final s in mySquads)
               for (final p in s.players) (s, p),
           ];
-          final selected = players.where((e) => e.$2.playerId == _playerId).firstOrNull;
+          final selected =
+              players.where((e) => e.$2.playerId == _playerId).firstOrNull;
           final fromSquad = selected?.$1;
           final player = selected?.$2;
-          final destinations = roster.squads.where((s) => s.squadId != fromSquad?.squadId).toList();
-          if (_toSquadId != null && !destinations.any((s) => s.squadId == _toSquadId)) _toSquadId = null;
+          final destinations = roster.squads
+              .where((s) => s.squadId != fromSquad?.squadId)
+              .toList();
+          if (_toSquadId != null &&
+              !destinations.any((s) => s.squadId == _toSquadId)) {
+            _toSquadId = null;
+          }
 
           return ListView(
             padding: const EdgeInsets.all(AppSpacing.lg),
             children: [
-              if (cached.fromCache) ...[CachedBanner(cachedAt: cached.cachedAt), const SizedBox(height: AppSpacing.md)],
+              if (cached.fromCache) ...[
+                CachedBanner(cachedAt: cached.cachedAt),
+                const SizedBox(height: AppSpacing.md)
+              ],
               if (!online)
                 const Padding(
                   padding: EdgeInsets.only(bottom: AppSpacing.md),
@@ -227,9 +258,18 @@ class _TransferFormScreenState extends ConsumerState<TransferFormScreen> {
                 ),
               SegmentedButton<TransferType>(
                 segments: const [
-                  ButtonSegment(value: TransferType.transfer, icon: Icon(Icons.swap_horiz), label: Text('Transfer')),
-                  ButtonSegment(value: TransferType.loan, icon: Icon(Icons.schedule_send), label: Text('Loan')),
-                  ButtonSegment(value: TransferType.release, icon: Icon(Icons.logout), label: Text('Release')),
+                  ButtonSegment(
+                      value: TransferType.transfer,
+                      icon: Icon(Icons.swap_horiz),
+                      label: Text('Transfer')),
+                  ButtonSegment(
+                      value: TransferType.loan,
+                      icon: Icon(Icons.schedule_send),
+                      label: Text('Loan')),
+                  ButtonSegment(
+                      value: TransferType.release,
+                      icon: Icon(Icons.logout),
+                      label: Text('Release')),
                 ],
                 selected: {_type},
                 onSelectionChanged: (s) => setState(() => _type = s.first),
@@ -238,12 +278,14 @@ class _TransferFormScreenState extends ConsumerState<TransferFormScreen> {
               DropdownButtonFormField<String>(
                 value: player?.playerId,
                 isExpanded: true,
-                decoration: const InputDecoration(labelText: 'Player', prefixIcon: Icon(Icons.person)),
+                decoration: const InputDecoration(
+                    labelText: 'Player', prefixIcon: Icon(Icons.person)),
                 items: [
                   for (final (s, p) in players)
                     DropdownMenuItem(
                       value: p.playerId,
-                      child: Text('${p.name} · ${p.position.toUpperCase()} · ${s.name}${p.onLoan ? ' (on loan)' : ''}',
+                      child: Text(
+                          '${p.name} · ${p.position.toUpperCase()} · ${s.name}${p.onLoan ? ' (on loan)' : ''}',
                           overflow: TextOverflow.ellipsis),
                     ),
                 ],
@@ -251,7 +293,9 @@ class _TransferFormScreenState extends ConsumerState<TransferFormScreen> {
               ),
               const SizedBox(height: AppSpacing.md),
               InputDecorator(
-                decoration: const InputDecoration(labelText: 'From squad', prefixIcon: Icon(Icons.shield_outlined)),
+                decoration: const InputDecoration(
+                    labelText: 'From squad',
+                    prefixIcon: Icon(Icons.shield_outlined)),
                 child: Text(fromSquad?.name ?? 'Select a player first'),
               ),
               if (_type != TransferType.release) ...[
@@ -259,12 +303,15 @@ class _TransferFormScreenState extends ConsumerState<TransferFormScreen> {
                 DropdownButtonFormField<String>(
                   value: _toSquadId,
                   isExpanded: true,
-                  decoration: const InputDecoration(labelText: 'To squad', prefixIcon: Icon(Icons.shield)),
+                  decoration: const InputDecoration(
+                      labelText: 'To squad', prefixIcon: Icon(Icons.shield)),
                   items: [
                     for (final s in destinations)
                       DropdownMenuItem(
                         value: s.squadId,
-                        child: Text('${s.name} (${s.players.length}/${roster.maxSquadSize})', overflow: TextOverflow.ellipsis),
+                        child: Text(
+                            '${s.name} (${s.players.length}/${roster.maxSquadSize})',
+                            overflow: TextOverflow.ellipsis),
                       ),
                   ],
                   onChanged: (v) => setState(() => _toSquadId = v),
@@ -274,7 +321,8 @@ class _TransferFormScreenState extends ConsumerState<TransferFormScreen> {
               _DateField(
                 label: 'Effective date',
                 value: _effectiveDate,
-                helper: 'Transfer window ${formatDate(roster.transferWindow.open)} – ${formatDate(roster.transferWindow.close)}',
+                helper:
+                    'Transfer window ${formatDate(roster.transferWindow.open)} – ${formatDate(roster.transferWindow.close)}',
                 onTap: () async {
                   final d = await _pickDate(_effectiveDate);
                   if (d != null) setState(() => _effectiveDate = d);
@@ -287,7 +335,8 @@ class _TransferFormScreenState extends ConsumerState<TransferFormScreen> {
                   value: _loanEndDate,
                   helper: 'Must be after the effective date',
                   onTap: () async {
-                    final d = await _pickDate(_loanEndDate ?? _effectiveDate, first: _effectiveDate);
+                    final d = await _pickDate(_loanEndDate ?? _effectiveDate,
+                        first: _effectiveDate);
                     if (d != null) setState(() => _loanEndDate = d);
                   },
                 ),
@@ -298,17 +347,25 @@ class _TransferFormScreenState extends ConsumerState<TransferFormScreen> {
                 maxLength: 200,
                 minLines: 2,
                 maxLines: 4,
-                decoration: const InputDecoration(labelText: 'Reason', alignLabelWithHint: true),
+                decoration: const InputDecoration(
+                    labelText: 'Reason', alignLabelWithHint: true),
               ),
               if (_errors.isNotEmpty) _MessageBox(lines: _errors, error: true),
-              if (_serverError != null) _MessageBox(lines: [_serverError!], error: true),
+              if (_serverError != null)
+                _MessageBox(lines: [_serverError!], error: true),
               const SizedBox(height: AppSpacing.md),
               FilledButton.icon(
-                onPressed: _busy ? null : () => _submit(roster, user, player, fromSquad),
+                onPressed: _busy
+                    ? null
+                    : () => _submit(roster, user, player, fromSquad),
                 icon: _busy
-                    ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2))
+                    ? const SizedBox(
+                        width: 18,
+                        height: 18,
+                        child: CircularProgressIndicator(strokeWidth: 2))
                     : Icon(online ? Icons.send : Icons.save_alt),
-                label: Text(online ? 'Review & submit' : 'Review & save offline'),
+                label:
+                    Text(online ? 'Review & submit' : 'Review & save offline'),
               ),
             ],
           );
@@ -319,7 +376,11 @@ class _TransferFormScreenState extends ConsumerState<TransferFormScreen> {
 }
 
 class _DateField extends StatelessWidget {
-  const _DateField({required this.label, required this.value, required this.onTap, this.helper});
+  const _DateField(
+      {required this.label,
+      required this.value,
+      required this.onTap,
+      this.helper});
   final String label;
   final String? value;
   final String? helper;
@@ -356,7 +417,9 @@ class _MessageBox extends StatelessWidget {
       child: Container(
         margin: const EdgeInsets.only(top: AppSpacing.md),
         padding: const EdgeInsets.all(AppSpacing.md),
-        decoration: BoxDecoration(color: color.withValues(alpha: 0.08), borderRadius: BorderRadius.circular(12)),
+        decoration: BoxDecoration(
+            color: color.withValues(alpha: 0.08),
+            borderRadius: BorderRadius.circular(12)),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -368,7 +431,10 @@ class _MessageBox extends StatelessWidget {
                   children: [
                     Icon(Icons.error_outline, color: color, size: 18),
                     const SizedBox(width: AppSpacing.sm),
-                    Expanded(child: Text(l, style: TextStyle(color: color, fontWeight: FontWeight.w600))),
+                    Expanded(
+                        child: Text(l,
+                            style: TextStyle(
+                                color: color, fontWeight: FontWeight.w600))),
                   ],
                 ),
               ),

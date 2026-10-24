@@ -19,9 +19,16 @@ import '../clubs/data/club_repository.dart';
 import '../fixtures/data/league_repository.dart';
 import '../fixtures/widgets/fixture_card.dart';
 import '../roster/data/roster_repository.dart';
+import '../cart/widgets/guest_cart_widgets.dart';
 
 /// Top-level routes that are bottom-navigation branches (use go, not push).
-const _branchRoutes = {'/home', '/fixtures', '/standings', '/store', '/profile'};
+const _branchRoutes = {
+  '/home',
+  '/fixtures',
+  '/standings',
+  '/store',
+  '/profile'
+};
 
 final _serverHealthProvider = FutureProvider.autoDispose<String>((ref) async {
   ref.watch(refreshTickProvider);
@@ -51,12 +58,17 @@ class DashboardScreen extends ConsumerWidget {
           children: [
             _Greeting(user: user, tenantName: session.tenant?.name),
             const SizedBox(height: AppSpacing.lg),
+            const GuestCartBanner(),
             _QuickActions(actions: actions),
             const SizedBox(height: AppSpacing.lg),
             ...switch (user.role) {
               UserRole.superAdmin => [const _AdminOverview()],
-              UserRole.leagueOrganizer => [_OrganizerSection(leagueId: user.leagueId)],
-              UserRole.clubManager => [_ClubSection(clubId: user.clubId, manage: true)],
+              UserRole.leagueOrganizer => [
+                  _OrganizerSection(leagueId: user.leagueId)
+                ],
+              UserRole.clubManager => [
+                  _ClubSection(clubId: user.clubId, manage: true)
+                ],
               UserRole.player => [_PlayerSection(user: user)],
               _ => [const _LiveAndUpcoming(title: 'Live & upcoming')],
             },
@@ -77,21 +89,35 @@ class _Greeting extends StatelessWidget {
     final primary = Theme.of(context).colorScheme.primary;
     return Container(
       padding: const EdgeInsets.all(AppSpacing.xl),
-      decoration: BoxDecoration(color: AppColors.navy, borderRadius: BorderRadius.circular(AppSpacing.radius)),
+      decoration: BoxDecoration(
+          color: AppColors.navy,
+          borderRadius: BorderRadius.circular(AppSpacing.radius)),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('Welcome back,', style: TextStyle(color: Colors.white.withValues(alpha: 0.75))),
+          Text('Welcome back,',
+              style: TextStyle(color: Colors.white.withValues(alpha: 0.75))),
           Text(user.name,
-              style: Theme.of(context).textTheme.headlineSmall?.copyWith(color: Colors.white, fontWeight: FontWeight.w800)),
+              style: Theme.of(context)
+                  .textTheme
+                  .headlineSmall
+                  ?.copyWith(color: Colors.white, fontWeight: FontWeight.w800)),
           const SizedBox(height: AppSpacing.md),
           Wrap(
             spacing: AppSpacing.sm,
             runSpacing: AppSpacing.xs,
             children: [
-              LabelBadge(icon: Icons.badge_outlined, text: roleLabel(user.role), color: AppColors.navy, background: AppColors.lime),
+              LabelBadge(
+                  icon: Icons.badge_outlined,
+                  text: roleLabel(user.role),
+                  color: AppColors.navy,
+                  background: AppColors.lime),
               if (tenantName != null)
-                LabelBadge(icon: Icons.apartment, text: tenantName!, color: Colors.white, background: primary),
+                LabelBadge(
+                    icon: Icons.apartment,
+                    text: tenantName!,
+                    color: Colors.white,
+                    background: primary),
             ],
           ),
         ],
@@ -134,7 +160,10 @@ class _QuickActions extends StatelessWidget {
                       children: [
                         Icon(a.icon, color: AppColors.navy),
                         const SizedBox(height: AppSpacing.sm),
-                        Text(a.label, style: const TextStyle(fontWeight: FontWeight.w700, color: AppColors.navy)),
+                        Text(a.label,
+                            style: const TextStyle(
+                                fontWeight: FontWeight.w700,
+                                color: AppColors.navy)),
                       ],
                     ),
                   ),
@@ -154,7 +183,9 @@ class _FixtureList extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    if (fixtures.isEmpty) return Text(empty, style: const TextStyle(color: AppColors.textMuted));
+    if (fixtures.isEmpty) {
+      return Text(empty, style: const TextStyle(color: AppColors.textMuted));
+    }
     return Column(
       children: [
         for (final f in fixtures.take(5)) ...[
@@ -172,11 +203,16 @@ List<Fixture> _liveFirst(Iterable<Fixture> all) {
         MatchStatus.upcoming => 1,
         _ => 2,
       };
-  final list = all.where((f) => f.status == MatchStatus.inProgress || f.status == MatchStatus.upcoming).toList()
+  final list = all
+      .where((f) =>
+          f.status == MatchStatus.inProgress ||
+          f.status == MatchStatus.upcoming)
+      .toList()
     ..sort((a, b) {
       final r = rank(a).compareTo(rank(b));
       if (r != 0) return r;
-      return (a.scheduledAt ?? DateTime(9999)).compareTo(b.scheduledAt ?? DateTime(9999));
+      return (a.scheduledAt ?? DateTime(9999))
+          .compareTo(b.scheduledAt ?? DateTime(9999));
     });
   return list;
 }
@@ -192,12 +228,16 @@ class _LiveAndUpcoming extends ConsumerWidget {
     return SectionCard(
       title: title,
       icon: Icons.sports_score,
-      trailing: TextButton(onPressed: () => context.go('/fixtures'), child: const Text('All')),
+      trailing: TextButton(
+          onPressed: () => context.go('/fixtures'), child: const Text('All')),
       child: async.when(
         loading: () => const LinearProgressIndicator(),
         error: (e, _) => Text(friendlyError(e)),
         data: (all) => _FixtureList(
-          fixtures: _liveFirst(teamId == null ? all : all.where((f) => f.homeTeamId == teamId || f.awayTeamId == teamId)),
+          fixtures: _liveFirst(teamId == null
+              ? all
+              : all.where(
+                  (f) => f.homeTeamId == teamId || f.awayTeamId == teamId)),
           empty: 'No live or upcoming matches.',
         ),
       ),
@@ -223,15 +263,24 @@ class _AdminOverview extends ConsumerWidget {
             runSpacing: AppSpacing.sm,
             children: [
               health.when(
-                loading: () => const LabelBadge(icon: Icons.hourglass_top, text: 'Checking server', color: AppColors.info),
-                error: (e, _) => const LabelBadge(icon: Icons.error_outline, text: 'Server unreachable', color: AppColors.danger),
+                loading: () => const LabelBadge(
+                    icon: Icons.hourglass_top,
+                    text: 'Checking server',
+                    color: AppColors.info),
+                error: (e, _) => const LabelBadge(
+                    icon: Icons.error_outline,
+                    text: 'Server unreachable',
+                    color: AppColors.danger),
                 data: (s) => LabelBadge(
                   icon: s == 'ok' ? Icons.check_circle : Icons.warning_amber,
                   text: 'Server: $s',
                   color: s == 'ok' ? AppColors.success : AppColors.warning,
                 ),
               ),
-              LabelBadge(icon: Icons.schedule, text: '${sync.pending} queued on device', color: AppColors.navySoft),
+              LabelBadge(
+                  icon: Icons.schedule,
+                  text: '${sync.pending} queued on device',
+                  color: AppColors.navySoft),
             ],
           ),
         ),
@@ -245,7 +294,9 @@ class _AdminOverview extends ConsumerWidget {
             data: (res) {
               final byTenant = <String, List<League>>{};
               for (final l in res.data) {
-                byTenant.putIfAbsent(l.tenantId ?? 'No tenant', () => []).add(l);
+                byTenant
+                    .putIfAbsent(l.tenantId ?? 'No tenant', () => [])
+                    .add(l);
               }
               return Column(
                 children: [
@@ -261,7 +312,8 @@ class _AdminOverview extends ConsumerWidget {
                             title: Text(l.name),
                             subtitle: Text(humanize(l.sportId)),
                             trailing: const Icon(Icons.leaderboard_outlined),
-                            onTap: () => context.go('/standings?league=${Uri.encodeComponent(l.leagueId)}'),
+                            onTap: () => context.go(
+                                '/standings?league=${Uri.encodeComponent(l.leagueId)}'),
                           ),
                       ],
                     ),
@@ -283,7 +335,9 @@ class _OrganizerSection extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    if (leagueId == null) return const _LiveAndUpcoming(title: 'Live & upcoming');
+    if (leagueId == null) {
+      return const _LiveAndUpcoming(title: 'Live & upcoming');
+    }
     final async = ref.watch(fixturesProvider(leagueId!));
     return Column(
       children: [
@@ -291,24 +345,34 @@ class _OrganizerSection extends ConsumerWidget {
           title: 'Your league · $leagueId',
           icon: Icons.emoji_events,
           trailing: TextButton(
-            onPressed: () => context.go('/standings?league=${Uri.encodeComponent(leagueId!)}'),
+            onPressed: () => context
+                .go('/standings?league=${Uri.encodeComponent(leagueId!)}'),
             child: const Text('Standings'),
           ),
           child: async.when(
             loading: () => const LinearProgressIndicator(),
             error: (e, _) => Text(friendlyError(e)),
             data: (res) {
-              final live = res.data.fixtures.where((f) => f.status == MatchStatus.inProgress).toList();
-              final upcoming = res.data.fixtures.where((f) => f.status == MatchStatus.upcoming).toList();
+              final live = res.data.fixtures
+                  .where((f) => f.status == MatchStatus.inProgress)
+                  .toList();
+              final upcoming = res.data.fixtures
+                  .where((f) => f.status == MatchStatus.upcoming)
+                  .toList();
               return Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  if (res.fromCache) const Text('Offline copy', style: TextStyle(color: AppColors.warning)),
-                  Text('Live now (${live.length}) — tap to score', style: Theme.of(context).textTheme.labelLarge),
+                  if (res.fromCache)
+                    const Text('Offline copy',
+                        style: TextStyle(color: AppColors.warning)),
+                  Text('Live now (${live.length}) — tap to score',
+                      style: Theme.of(context).textTheme.labelLarge),
                   const SizedBox(height: AppSpacing.sm),
-                  _FixtureList(fixtures: live, empty: 'No matches in progress.'),
+                  _FixtureList(
+                      fixtures: live, empty: 'No matches in progress.'),
                   const SizedBox(height: AppSpacing.md),
-                  Text('Upcoming (${upcoming.length})', style: Theme.of(context).textTheme.labelLarge),
+                  Text('Upcoming (${upcoming.length})',
+                      style: Theme.of(context).textTheme.labelLarge),
                   const SizedBox(height: AppSpacing.sm),
                   _FixtureList(fixtures: upcoming, empty: 'Nothing scheduled.'),
                 ],
@@ -344,11 +408,13 @@ class _ClubSection extends ConsumerWidget {
                 ListTile(
                   contentPadding: EdgeInsets.zero,
                   leading: TeamAvatar(name: res.data.name),
-                  title: Text(res.data.name, style: const TextStyle(fontWeight: FontWeight.w700)),
+                  title: Text(res.data.name,
+                      style: const TextStyle(fontWeight: FontWeight.w700)),
                   subtitle: Text('${res.data.roster.length} registered players'
                       '${res.fromCache ? ' · offline copy' : ''}'),
                   trailing: const Icon(Icons.chevron_right),
-                  onTap: () => context.push('/club/${Uri.encodeComponent(clubId!)}'),
+                  onTap: () =>
+                      context.push('/club/${Uri.encodeComponent(clubId!)}'),
                 ),
                 if (manage) ...[
                   const SizedBox(height: AppSpacing.sm),
@@ -387,11 +453,14 @@ class _PlayerSection extends ConsumerWidget {
                   error: (e, _) => Text(friendlyError(e)),
                   data: (res) => ListTile(
                     contentPadding: EdgeInsets.zero,
-                    title: Text('Squad: ${res.data.currentSquadId ?? 'not registered'}'),
-                    subtitle: Text('League ${res.data.leagueId} · ${res.data.history.length} recorded move(s)'
+                    title: Text(
+                        'Squad: ${res.data.currentSquadId ?? 'not registered'}'),
+                    subtitle: Text(
+                        'League ${res.data.leagueId} · ${res.data.history.length} recorded move(s)'
                         '${res.data.parentSquadId != null ? ' · on loan from ${res.data.parentSquadId}' : ''}'),
                     trailing: const Icon(Icons.chevron_right),
-                    onTap: () => context.push('/player/${Uri.encodeComponent(playerId)}'),
+                    onTap: () => context
+                        .push('/player/${Uri.encodeComponent(playerId)}'),
                   ),
                 ),
           ),

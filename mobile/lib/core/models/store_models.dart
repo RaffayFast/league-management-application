@@ -51,8 +51,9 @@ class Product {
   final List<Variant> variants;
 
   int get totalStock => variants.fold(0, (sum, v) => sum + v.stock);
-  int? get fromPriceMinor =>
-      variants.isEmpty ? null : variants.map((v) => v.priceMinor).reduce((a, b) => a < b ? a : b);
+  int? get fromPriceMinor => variants.isEmpty
+      ? null
+      : variants.map((v) => v.priceMinor).reduce((a, b) => a < b ? a : b);
 
   factory Product.fromJson(Json j) => Product(
         productId: asString(j['product_id']),
@@ -65,7 +66,10 @@ class Product {
 }
 
 class OrderItem {
-  const OrderItem({required this.variantId, required this.quantity, required this.unitPriceMinor});
+  const OrderItem(
+      {required this.variantId,
+      required this.quantity,
+      required this.unitPriceMinor});
   final String variantId;
   final int quantity;
   final int unitPriceMinor;
@@ -80,7 +84,10 @@ class OrderItem {
 }
 
 class PaymentInfo {
-  const PaymentInfo({required this.authorizationId, required this.captureId, required this.state});
+  const PaymentInfo(
+      {required this.authorizationId,
+      required this.captureId,
+      required this.state});
   final String authorizationId;
   final String captureId;
   final String state;
@@ -126,7 +133,10 @@ class ReceiptPayload {
 }
 
 class Receipt {
-  const Receipt({required this.payload, required this.signature, required this.pdfBase64});
+  const Receipt(
+      {required this.payload,
+      required this.signature,
+      required this.pdfBase64});
   final ReceiptPayload payload;
   final String signature;
   final String pdfBase64;

@@ -23,6 +23,19 @@
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
+            <!-- Day 2 spec 6.3: nascon://entity/<id> and nascon://stream/<session> open the app directly.
+                 MainActivity forwards the URI to Dart over the "leaguehub/deeplinks" channel. -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="nascon" />
+            </intent-filter>
+            <!-- Flutter's own deep linking would route nascon://entity/match-m1 as "/match-m1"; the channel
+                 handles links instead, so the built-in handling is switched off. -->
+            <meta-data
+                android:name="flutter_deeplinking_enabled"
+                android:value="false" />
         </activity>
         <meta-data
             android:name="flutterEmbedding"

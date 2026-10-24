@@ -26,9 +26,13 @@ class TransferService {
   TransferService(this._ref);
   final Ref _ref;
 
-  Future<TransferOutcome> submit(TransferRequest request, {required String label}) async {
-    if (!_ref.read(syncControllerProvider).online) return queue(request, label: label);
-    final (response, replay) = await _ref.read(rosterRepositoryProvider).transfer(request);
+  Future<TransferOutcome> submit(TransferRequest request,
+      {required String label}) async {
+    if (!_ref.read(syncControllerProvider).online) {
+      return queue(request, label: label);
+    }
+    final (response, replay) =
+        await _ref.read(rosterRepositoryProvider).transfer(request);
     return TransferConfirmed(response, replay: replay);
   }
 
@@ -36,14 +40,16 @@ class TransferService {
   /// (live when reachable, otherwise from the SQLite cache, otherwise 0).
   Future<int> observedHistoryCount(String playerId) async {
     try {
-      final history = await _ref.read(rosterRepositoryProvider).history(playerId);
+      final history =
+          await _ref.read(rosterRepositoryProvider).history(playerId);
       return history.data.history.length;
     } on ApiException {
       return 0;
     }
   }
 
-  Future<TransferQueued> queue(TransferRequest request, {required String label}) async {
+  Future<TransferQueued> queue(TransferRequest request,
+      {required String label}) async {
     final owner = _ref.read(authControllerProvider).user?.userId ?? 'unknown';
     final action = PendingAction.forRosterTransfer(
       transferBody: request.toJson(),

@@ -1,0 +1,97 @@
+# LeagueHub CI (Day 2 spec 1.3): backend contract tests, full stack readiness and ports, Selenium Grid 4,
+# and the k6 load profile. Reports land in tests/reports/ and are uploaded as an artifact.
+# Salts come from repository secrets; CI-only placeholders are used when a fork has none.
+name: autograde
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+env:
+  DAY1_SALT: ${{ secrets.DAY1_SALT != '' && secrets.DAY1_SALT || 'ci-day1-placeholder' }}
+  DAY2_SALT: ${{ secrets.DAY2_SALT != '' && secrets.DAY2_SALT || 'ci-day2-placeholder' }}
+
+jobs:
+  backend:
+    name: Backend contract tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install -r requirements-dev.txt
+      - name: Phase I + Groups 1-3 backend suites
+        run: >
+          python -m pytest -q -rxX --ignore=tests/selenium --ignore=tests/appium
+          --junitxml=tests/reports/backend-report.xml
+          --cov=services --cov=routers --cov=models --cov=middleware --cov-report=json:tests/reports/coverage.json
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: backend-reports
+          path: tests/reports/
+
+  stack:
+    name: Stack, Selenium Grid and k6
+    needs: backend
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: docker compose up -d --build
+        run: docker compose up -d --build
+      - name: Readiness within 120 s (health 200 and grid with 3 nodes)
+        run: |
+          for i in $(seq 1 60); do
+            health=$(curl -s -m 2 http://localhost:8080/health || true)
+            nodes=$(curl -s -m 2 http://localhost:4444/status | python3 -c "import sys,json; v=json.load(sys.stdin)['value']; print(len(v['nodes']) if v['ready'] else 0)" 2>/dev/null || echo 0)
+            if [ "$health" = '{"status":"ok"}' ] && [ "$nodes" -ge 3 ]; then echo "ready after $((i * 2)) s"; exit 0; fi
+            sleep 2
+          done
+          docker compose ps; docker compose logs --tail 50; exit 1
+      - name: Required host ports
+        run: |
+          for port in 8080 1935 8888 8889 4444; do
+            nc -z -w 3 localhost "$port" && echo "port $port open" || { echo "port $port closed"; exit 1; }
+          done
+          curl -sf http://localhost:8080/metrics | grep -E '^nascon_(active_ws_connections|active_streams_total|stream_bitrate_kbps|dlq_depth|qr_scans_total) '
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install -r requirements-dev.txt
+      - name: Selenium Grid 4 suite (Chrome + Firefox, 3 workers)
+        env:
+          SELENIUM_REQUIRED: "1"
+          API_BASE_URL: http://localhost:8080
+          GUEST_BASE_URL: http://web:8080
+        run: python -m pytest -n 3 tests/selenium/ --junitxml=tests/reports/selenium-report.xml
+      - name: k6 load profile (500 viewers + 50 chat posters, 15 s; fails on any HTTP error or p95 >= 800 ms)
+        run: >
+          docker run --rm --network host -v "$PWD/tests:/tests" grafana/k6:0.54.0
+          run --summary-export=/tests/reports/k6-summary.json /tests/k6_load.js
+      - name: Appium deep links
+        run: echo "::notice::Appium needs an Android device and runs at the desk (tests/appium, README.md); skipped in CI."
+      - name: Job summary
+        if: always()
+        run: |
+          python3 - <<'PY' >> "$GITHUB_STEP_SUMMARY"
+          import json, os
+          print("## k6")
+          try:
+              m = json.load(open("tests/reports/k6-summary.json"))["metrics"]
+              print(f"- requests: {m['http_reqs']['count']}, failed rate: {m['http_req_failed']['value']:.2%}, p95: {m['http_req_duration']['p(95)']:.0f} ms")
+          except Exception as exc:
+              print(f"- no k6 summary ({exc})")
+          PY
+      - name: Logs on failure
+        if: failure()
+        run: docker compose logs --tail 200
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: stack-reports
+          path: tests/reports/
+      - name: Tear down
+        if: always()
+        run: docker compose down -v

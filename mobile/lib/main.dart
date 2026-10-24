@@ -8,6 +8,7 @@ import 'app/app.dart';
 import 'core/providers.dart';
 import 'core/storage/local_db.dart';
 import 'core/storage/settings_store.dart';
+import 'features/streaming/services/media_playback_service.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -17,6 +18,9 @@ Future<void> main() async {
     sqfliteFfiInit();
     databaseFactory = databaseFactoryFfi;
   }
+
+  // libmpv for HLS on Windows; a failure is shown by the player instead of crashing the app.
+  MediaPlaybackService.initializeForPlatform();
 
   final db = await LocalDb.open();
   final baseUrl = await SettingsStore(db).baseUrl();

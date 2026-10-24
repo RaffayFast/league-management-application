@@ -1,0 +1,19 @@
+{% set status_labels = {"upcoming": "Upcoming", "in_progress": "Live", "completed": "Full time"} %}
+<section class="card" aria-labelledby="fixtures-title">
+  <h2 id="fixtures-title">Fixtures</h2>
+  {% if fixtures %}
+  <ul class="fixture-list">
+    {% for f in fixtures %}
+    <li>
+      <a class="fixture-row" href="{{ f.web_route }}">
+        <span class="fixture-teams">{{ f.home.name }} <span class="vs">vs</span> {{ f.away.name }}</span>
+        <span class="fixture-score">{% if f.status != "upcoming" %}{{ f.home.score }} - {{ f.away.score }}{% endif %}</span>
+        <span class="status-pill status-{{ f.status }}">{{ status_labels.get(f.status, f.status) }}</span>
+      </a>
+    </li>
+    {% endfor %}
+  </ul>
+  {% else %}
+  <p class="muted">No matches yet.</p>
+  {% endif %}
+</section>
